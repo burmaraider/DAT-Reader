@@ -168,7 +168,7 @@ public class DATReader70 : MonoBehaviour
                         m.RecalculateNormals();
                     }
 
-                    else //the fuck? ngons? lets fix this poorly
+                    else if(m.vertices.Length == 5) //the fuck? ngons? lets fix this poorly
                     {
                         int[] tempint = new int[1];
                         Array.Resize(ref tempint, 8);
@@ -176,33 +176,38 @@ public class DATReader70 : MonoBehaviour
                         {
                             tempint[vertCount] = vertCount;
                         }
-                        //Array.Resize(ref tempint, 3);
-                        
+
                         List<Vector3> tempVerts = new List<Vector3>();
-                        //for(int v = 0; v < m.vertices.Length-1; v++)
-                        //{
-                        //        tempVerts.Add(m.vertices[v+1]);
-                        //}
 
                         tempVerts.Add(m.vertices[0]);
                         tempVerts.Add(m.vertices[1]);
                         tempVerts.Add(m.vertices[2]);
                         tempVerts.Add(m.vertices[3]);
 
-                        m.subMeshCount = 2;
+                        
 
                         tempVerts.Add(m.vertices[2]);
                         tempVerts.Add(m.vertices[3]);
                         tempVerts.Add(m.vertices[4]);
                         tempVerts.Add(m.vertices[0]);
 
-                        
-                        //tempVerts.Add(m.vertices[4]);
+                        m.subMeshCount = 2;
 
                         m.vertices = tempVerts.ToArray();
 
                         m.SetIndices(tempint, MeshTopology.Quads, 0, false, 0);
-                        m.SetIndices(tempint, MeshTopology.Quads, 1, false, 1);
+                        m.SetIndices(tempint, MeshTopology.Quads, 1);
+                        m.RecalculateBounds();
+                        m.Optimize();
+                        m.RecalculateNormals();
+                    }
+
+                    else if(m.vertices.Length == 6) //the fuck? ngons? lets fix this poorly
+                    {
+
+                        int[] tempint = new int[12] {1,2,0,0,2,3,4,0,3,5,0,4};
+
+                        m.SetIndices(tempint, MeshTopology.Triangles, 0);
                         m.RecalculateBounds();
                         m.Optimize();
                         m.RecalculateNormals();
@@ -210,7 +215,7 @@ public class DATReader70 : MonoBehaviour
                     
                     mr.material = new Material(Shader.Find("Diffuse"));
                     
-                            mf.mesh = m;
+                    mf.mesh = m;
                     it++;
                     tNormals.Clear();
                     tVec.Clear();
