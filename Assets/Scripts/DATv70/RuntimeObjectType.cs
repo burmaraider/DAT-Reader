@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
@@ -17,7 +15,7 @@ public class RuntimeObjectType : MonoBehaviour
     {
         transform.localScale = new Vector3(-transform.localScale.x, transform.localScale.y, transform.localScale.z);
         GetComponent<TextMeshPro>().fontSharedMaterial.shader = Shader.Find("TextMeshPro/Distance Field Overlay");
-        GetComponent<TextMeshPro>().fontSize = 2f;
+        GetComponent<TextMeshPro>().fontSize = 1.2f;
         GetComponent<TextMeshPro>().alignment = TextAlignmentOptions.Center;
     }
 

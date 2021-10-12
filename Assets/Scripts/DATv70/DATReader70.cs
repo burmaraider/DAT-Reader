@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -10,6 +9,7 @@ using static LTTypes.LTTypes;
 
 public class DATReader70 : MonoBehaviour
 {
+    public UnityEngine.UI.Text infoBox;
     public GameObject prefab;
     public WorldObjects LTGameObjects = new WorldObjects();
     WorldReader worldReader = new WorldReader();
@@ -63,7 +63,6 @@ public class DATReader70 : MonoBehaviour
         wTree.ReadWorldTree(ref b);
 
         //read world models...
-        //procedure TLTWorldReader.ReadWorldModels; 
         byte[] anDummy = new byte[32];
         String szDump = String.Empty;
         int nDummy = 0;
@@ -104,6 +103,9 @@ public class DATReader70 : MonoBehaviour
 
         b.BaseStream.Position = worldReader.WorldHeader.dwObjectDataPos;
         LoadObjects(ref b);
+
+        //var actualFileName = szFileName.Split('\\');
+        //infoBox.text = string.Format("Loaded World: {0}", actualFileName[actualFileName.Length-1]);
 
         b.BaseStream.Close();
 
@@ -153,52 +155,67 @@ public class DATReader70 : MonoBehaviour
                     
                     m.vertices = tVec.ToArray();
 
-
-
-                    /*
-                    Vector3 uv1 = new Vector3(
-                            tBSP.m_pPolies[it].m_vUV1.X,
-                            tBSP.m_pPolies[it].m_vUV1.Y,
-                            tBSP.m_pPolies[it].m_vUV1.Z
-                    );
-                    Vector3 uv2 = new Vector3(
-                            tBSP.m_pPolies[it].m_vUV2.X,
-                            tBSP.m_pPolies[it].m_vUV2.Y,
-                            tBSP.m_pPolies[it].m_vUV2.Z
-                    );
-                    Vector3 uv3 = new Vector3(
-                            tBSP.m_pPolies[it].m_vUV3.X,
-                            tBSP.m_pPolies[it].m_vUV3.Y,
-                            tBSP.m_pPolies[it].m_vUV3.Z
-                    );
-
-
-                    Barycentric tempB = new Barycentric(uv1, uv2, uv3, Vector3.up);
-
-                    List<Vector2> uvList = new List<Vector2>();
-                    Vector2 m_uv = tempB.Interpolate(uv1, uv2, uv3);
-                   
-                    m.uv = uvList.ToArray();
-                    */
-                    
-                    //m.normals = tNormals.ToArray();
                     if(m.vertices.Length == 3)
                     {
                         int[] tempint = new int[3] {0,1,2};
                         m.SetTriangles(tempint, 0);
+                        m.RecalculateNormals();
                     }
-                    else
+                    else if(m.vertices.Length == 4)
                     {
                         int[] tempint = new int[4] {0,1,2,3};
                         m.SetIndices(tempint, MeshTopology.Quads, 0);
+                        m.RecalculateNormals();
                     }
+
+                    else //the fuck? ngons? lets fix this poorly
+                    {
+                        int[] tempint = new int[1];
+                        Array.Resize(ref tempint, 8);
+                        for(int vertCount = 0; vertCount < 8; vertCount++)
+                        {
+                            tempint[vertCount] = vertCount;
+                        }
+                        //Array.Resize(ref tempint, 3);
+                        
+                        List<Vector3> tempVerts = new List<Vector3>();
+                        //for(int v = 0; v < m.vertices.Length-1; v++)
+                        //{
+                        //        tempVerts.Add(m.vertices[v+1]);
+                        //}
+
+                        tempVerts.Add(m.vertices[0]);
+                        tempVerts.Add(m.vertices[1]);
+                        tempVerts.Add(m.vertices[2]);
+                        tempVerts.Add(m.vertices[3]);
+
+                        m.subMeshCount = 2;
+
+                        tempVerts.Add(m.vertices[2]);
+                        tempVerts.Add(m.vertices[3]);
+                        tempVerts.Add(m.vertices[4]);
+                        tempVerts.Add(m.vertices[0]);
+
+                        
+                        //tempVerts.Add(m.vertices[4]);
+
+                        m.vertices = tempVerts.ToArray();
+
+                        m.SetIndices(tempint, MeshTopology.Quads, 0, false, 0);
+                        m.SetIndices(tempint, MeshTopology.Quads, 1, false, 1);
+                        m.RecalculateBounds();
+                        m.Optimize();
+                        m.RecalculateNormals();
+                    }
+                    
                     mr.material = new Material(Shader.Find("Diffuse"));
-                    m.RecalculateNormals();
+                    
                             mf.mesh = m;
                     it++;
                     tNormals.Clear();
                     tVec.Clear();
                 }
+                
                 //combine meshes
                 MeshFilter[] meshFilters = mainObject.GetComponentsInChildren<MeshFilter>();
                 CombineInstance[] combine = new CombineInstance[meshFilters.Length];
@@ -216,11 +233,13 @@ public class DATReader70 : MonoBehaviour
                 mainObject.transform.GetComponent<MeshFilter>().mesh = new Mesh();
                 mainObject.transform.GetComponent<MeshFilter>().mesh.CombineMeshes(combine);
                 mainObject.transform.gameObject.SetActive(true);
+                mainObject.AddComponent<MeshCollider>();
 
                 foreach(Transform tObj in mainObject.transform)
                 {
                     Destroy(tObj.gameObject);
                 }
+                
             }
         }
     }
