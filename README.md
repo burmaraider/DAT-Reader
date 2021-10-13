@@ -4,7 +4,6 @@ Lithtech DAT v70 World Viewer
 
 ## **Overview**
 * It can display a .DAT file from AVP2
-* It has some issues like missing polygons
 * It has no UV support
 
 <p align="center">
