@@ -5,6 +5,8 @@ TagManager:
   serializedVersion: 2
   tags:
   - GameStartPoint
+  - Blocker
+  - Volumes
   layers:
   - Default
   - TransparentFX

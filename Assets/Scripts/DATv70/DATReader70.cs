@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -10,6 +11,7 @@ using static LTTypes.LTTypes;
 public class DATReader70 : MonoBehaviour
 {
     public UnityEngine.UI.Text infoBox;
+    public UnityEngine.UI.Text loadingUI;
     public GameObject prefab;
     public WorldObjects LTGameObjects = new WorldObjects();
     WorldReader worldReader = new WorldReader();
@@ -48,11 +50,13 @@ public class DATReader70 : MonoBehaviour
         var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, false);
 
         if(paths.Length > 0)
-            LoadLevel(paths[0]);
+            StartCoroutine("LoadLevel", paths[0]);
+            //LoadLevel(paths[0]);
     }
-    public void LoadLevel(String szFileName)
+    
+    private IEnumerator LoadLevel(String szFileName)
     {
-
+        loadingUI.enabled = true;
         BinaryReader b = new BinaryReader(File.Open(szFileName, FileMode.Open));
 
         worldReader.ReadHeader(ref b);
@@ -78,6 +82,7 @@ public class DATReader70 : MonoBehaviour
 
         for(int i= 0; i< WMList.nNumModels; i++)
         {
+            yield return null;
             Debug.Log("Current Position: " + b.BaseStream.Position);
             nDummy = b.ReadInt32();
             anDummy = b.ReadBytes(anDummy.Length);
@@ -104,8 +109,8 @@ public class DATReader70 : MonoBehaviour
         b.BaseStream.Position = worldReader.WorldHeader.dwObjectDataPos;
         LoadObjects(ref b);
 
-        //var actualFileName = szFileName.Split('\\');
-        //infoBox.text = string.Format("Loaded World: {0}", actualFileName[actualFileName.Length-1]);
+        var actualFileName = szFileName.Split('\\');
+        infoBox.text = string.Format("Loaded World: {0}", actualFileName[actualFileName.Length-1]);
 
         b.BaseStream.Close();
 
@@ -113,9 +118,11 @@ public class DATReader70 : MonoBehaviour
         List<Vector3> vertexList = new List<Vector3>();
         List<Vector3> vertexList2 = new List<Vector3>();
 
-        int it = 0;
+        
         foreach(WorldBsp tBSP in bspListTest)
         {
+            int it = 0;
+            yield return null;
             Debug.Log("Generating Mesh for: " + tBSP.m_szWorldName);
             if(tBSP.m_szWorldName != "VisBSP")
             {
@@ -123,6 +130,25 @@ public class DATReader70 : MonoBehaviour
                 mainObject.transform.parent = this.transform;
                 mainObject.AddComponent<MeshFilter>();
                 mainObject.AddComponent<MeshRenderer>().material = new Material(Shader.Find("Diffuse"));
+
+                if(tBSP.m_aszTextureNames[0].Contains("Invisible.dtx") ||
+                   tBSP.m_aszTextureNames[0].Contains("Sky.dtx"))
+                {
+                    mainObject.tag = "Blocker";
+                }
+
+                if(tBSP.m_aszTextureNames[0].Contains("AI.dtx") || 
+                    tBSP.m_szWorldName.Contains("Volume")||
+                    tBSP.m_szWorldName.Contains("Water") ||
+                    tBSP.m_szWorldName.Contains("Rain") ||
+                    tBSP.m_szWorldName.Contains("rain") ||
+                    tBSP.m_szWorldName.Contains("weather") ||
+                    tBSP.m_szWorldName.Contains("Weather") ||
+                    tBSP.m_szWorldName.Contains("Ladder"))
+                {
+                    mainObject.tag = "Volumes";
+                }
+
 
                 
                 foreach(WorldPoly tPoly in tBSP.m_pPolies)
@@ -155,66 +181,28 @@ public class DATReader70 : MonoBehaviour
                     
                     m.vertices = tVec.ToArray();
 
-                    if(m.vertices.Length == 3)
+                    //Big thanks to Amphos for this.
+                    int extra_vert_count=m.vertices.Length-3;
+                    int size = 3*extra_vert_count+3;
+                    int[] tempint = new int[1];
+                    Array.Resize(ref tempint, size);
+                    tempint[0] = 0;
+                    tempint[1] = 1;
+                    tempint[2] = 2;
+                    for(int t=1; t<=extra_vert_count; ++t)
                     {
-                        int[] tempint = new int[3] {0,1,2};
-                        m.SetTriangles(tempint, 0);
-                        m.RecalculateNormals();
-                    }
-                    else if(m.vertices.Length == 4)
-                    {
-                        int[] tempint = new int[4] {0,1,2,3};
-                        m.SetIndices(tempint, MeshTopology.Quads, 0);
-                        m.RecalculateNormals();
-                    }
-
-                    else if(m.vertices.Length == 5) //the fuck? ngons? lets fix this poorly
-                    {
-                        int[] tempint = new int[1];
-                        Array.Resize(ref tempint, 8);
-                        for(int vertCount = 0; vertCount < 8; vertCount++)
-                        {
-                            tempint[vertCount] = vertCount;
-                        }
-
-                        List<Vector3> tempVerts = new List<Vector3>();
-
-                        tempVerts.Add(m.vertices[0]);
-                        tempVerts.Add(m.vertices[1]);
-                        tempVerts.Add(m.vertices[2]);
-                        tempVerts.Add(m.vertices[3]);
-
-                        
-
-                        tempVerts.Add(m.vertices[2]);
-                        tempVerts.Add(m.vertices[3]);
-                        tempVerts.Add(m.vertices[4]);
-                        tempVerts.Add(m.vertices[0]);
-
-                        m.subMeshCount = 2;
-
-                        m.vertices = tempVerts.ToArray();
-
-                        m.SetIndices(tempint, MeshTopology.Quads, 0, false, 0);
-                        m.SetIndices(tempint, MeshTopology.Quads, 1);
-                        m.RecalculateBounds();
-                        m.Optimize();
-                        m.RecalculateNormals();
+                        tempint[3*t]=0;
+                        tempint[3*t+1]=tempint[3*t-1];
+                        tempint[3*t+2]=3+t-1;
                     }
 
-                    else if(m.vertices.Length == 6) //the fuck? ngons? lets fix this poorly
-                    {
-
-                        int[] tempint = new int[12] {1,2,0,0,2,3,4,0,3,5,0,4};
-
-                        m.SetIndices(tempint, MeshTopology.Triangles, 0);
-                        m.RecalculateBounds();
-                        m.Optimize();
-                        m.RecalculateNormals();
-                    }
+                    m.SetTriangles(tempint, 0);
                     
+                    m.Optimize();
+                    m.RecalculateNormals();
+                    
+
                     mr.material = new Material(Shader.Find("Diffuse"));
-                    
                     mf.mesh = m;
                     it++;
                     tNormals.Clear();
@@ -247,6 +235,9 @@ public class DATReader70 : MonoBehaviour
                 
             }
         }
+        loadingUI.enabled = false;
+
+        //yield return new WaitForEndOfFrame();
     }
     public void LoadObjects(ref BinaryReader b)
     {
@@ -299,13 +290,13 @@ public class DATReader70 : MonoBehaviour
                     {
                         var vec = (LTVector)subItem.Value;
                         Vector3 col = Vector3.Normalize(new Vector3(vec.X, vec.Y, vec.Z));
-                        //Vector3.Normalize()
                         light.color = new Color(col.x, col.y, col.z);
                     }
 
                     else if(subItem.Key == "BrightScale")
                         light.intensity = (float)subItem.Value * 0.5f;          
                 }
+                light.shadows = LightShadows.Soft;
             }
 
             if(obj.objectName == "DirLight")
@@ -331,7 +322,7 @@ public class DATReader70 : MonoBehaviour
                         light.intensity = (float)subItem.Value * 0.5f;
                 }
 
-                //light.shadows = LightShadows.Soft;
+                light.shadows = LightShadows.Soft;
                 light.type = LightType.Spot;
             }
 
@@ -364,6 +355,9 @@ public class DATReader70 : MonoBehaviour
             newGO.transform.parent = tempObject.transform;
 
             newGO.AddComponent<TextMeshPro>();
+            var t = newGO.AddComponent<UnityEngine.UI.ContentSizeFitter>();
+            t.horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+            t.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
             var rtObj = newGO.AddComponent<RuntimeObjectType>();
             rtObj.cam = Camera.main.transform;
             rtObj.objectType = tempObject.name;
@@ -381,27 +375,44 @@ public class DATReader70 : MonoBehaviour
     {
         if(worldReader.WorldProperties != null)
         {
-            if(worldReader.WorldProperties.Contains("AmbientLight"))
+            var worldPropertiesArray = worldReader.WorldProperties.Split(';');
+
+            foreach(var property in worldPropertiesArray)
             {
-                int startPos = worldReader.WorldProperties.IndexOf(" ");
-                int endPos = worldReader.WorldProperties.IndexOf(";");
+                if(property.Contains("AmbientLight"))
+                {
 
-                if(endPos == -1)
-                    endPos = worldReader.WorldProperties.Length;
+                    string property2 = String.Empty;
+                    int ambPos = property.IndexOf("AmbientLight");
+                    int startPos = property.IndexOf(" ");
+                    
+                    int endPos = property.IndexOf(";");
 
-                var szTemp = worldReader.WorldProperties.Substring(startPos+1, endPos-1 - startPos);
+                    if(endPos == -1)
+                        endPos = property.Length;
 
-                var splitStrings = szTemp.Split(' ');
+                    property2 = property;
+                    if(startPos == 0)
+                    {   
+                        property2 = property.Substring(startPos+1, endPos-1 - startPos);
+                        startPos = property2.IndexOf(" ");
+                        endPos = property2.Length;
+                    }
 
-                Vector3 tempVec = Vector3.Normalize(new Vector3(
-                    float.Parse(splitStrings[0]),
-                    float.Parse(splitStrings[1]),
-                    float.Parse(splitStrings[2])
-                ));
+                    var szTemp = property2.Substring(startPos+1, endPos-1 - startPos);
 
-                var color = new Color(tempVec.x, tempVec.y, tempVec.y, 255);
-                RenderSettings.ambientLight = color;
-                RenderSettings.ambientIntensity = 0.5f;
+                    var splitStrings = szTemp.Split(' ');
+
+                    Vector3 tempVec = Vector3.Normalize(new Vector3(
+                        float.Parse(splitStrings[0]),
+                        float.Parse(splitStrings[1]),
+                        float.Parse(splitStrings[2])
+                    ));
+
+                    var color = new Color(tempVec.x, tempVec.y, tempVec.y, 255);
+                    RenderSettings.ambientLight = color;
+                    RenderSettings.ambientIntensity = 0.5f;
+                }
             }
         }
     }

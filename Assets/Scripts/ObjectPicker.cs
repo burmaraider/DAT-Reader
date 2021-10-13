@@ -9,7 +9,6 @@ public class ObjectPicker : MonoBehaviour
     private GameObject pastSelectedObject;
     public Text infoBox;
 
-    // Update is called once per frame
     void Update()
     {
         if (EventSystem.current.IsPointerOverGameObject() == false)
@@ -20,18 +19,17 @@ public class ObjectPicker : MonoBehaviour
                 Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition); 
                 if ( Physics.Raycast (ray,out hit,10000.0f)) 
                 {
-                    //StartCoroutine(ScaleMe(hit.transform));
-                    Debug.Log("You selected the " + hit.transform.name); // ensure you picked right object
-
                     if(hit.transform.name != "PhysicsBSP")
                     {
                         infoBox.text = string.Format("Selected Object: {0}\n", hit.transform.name);
+
                         if(pastSelectedObject == null)
                         {
                             selectedObject = hit.transform.gameObject;
                             selectedObject.AddComponent<cakeslice.Outline>();
                             pastSelectedObject = selectedObject;
                         }
+
                         else
                         {
                             selectedObject = hit.transform.gameObject;
@@ -48,6 +46,51 @@ public class ObjectPicker : MonoBehaviour
                 pastSelectedObject = null;
 
                 infoBox.text = string.Format("Deleted Object: {0}\n", selectedObject.name);
+            }
+        }
+    }
+
+    public void ToggleBlockers(System.Boolean b)
+    {
+        var levelGameObject = GameObject.Find("Level");
+
+        foreach(Transform t in levelGameObject.transform)
+            if(t.tag == "Blocker")
+                t.gameObject.SetActive(b);
+    }
+
+    public void ToggleVolumes(System.Boolean b)
+    {
+        var levelGameObject = GameObject.Find("Level");
+
+        foreach(Transform t in levelGameObject.transform)
+            if(t.tag == "Volumes")
+                t.gameObject.SetActive(b);
+    }
+
+    public void ToggleBSP(System.Boolean b)
+    {
+        var levelGameObject = GameObject.Find("Level");
+
+        foreach(Transform t in levelGameObject.transform)
+            if(t.name == "PhysicsBSP")
+                t.gameObject.SetActive(b);
+    }
+
+    public void ToggleShadows(System.Boolean b)
+    {
+        var levelGameObject = GameObject.Find("objects");
+
+        foreach(Transform t in levelGameObject.transform)
+        {
+            var temp = t.GetComponent<Light>();
+
+            if(temp)
+            {
+                if(b)
+                    temp.shadows = LightShadows.Soft;
+                else
+                    temp.shadows = LightShadows.None;
             }
         }
     }
