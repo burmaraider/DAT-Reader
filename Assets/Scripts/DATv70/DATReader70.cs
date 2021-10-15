@@ -6,6 +6,8 @@ using UnityEngine;
 using SFB;
 using TMPro;
 using static LTTypes.LTTypes;
+using System.Threading;
+using UnityToolbag;
 
 
 public class DATReader70 : MonoBehaviour
@@ -16,6 +18,13 @@ public class DATReader70 : MonoBehaviour
     public WorldObjects LTGameObjects = new WorldObjects();
     WorldReader worldReader = new WorldReader();
     List<WorldBsp> bspListTest = new List<WorldBsp>();
+
+
+
+    public void Start()
+    {
+        gameObject.AddComponent<Dispatcher>();
+    }
 
     public void ClearLevel()
     {
@@ -42,6 +51,7 @@ public class DATReader70 : MonoBehaviour
     {
         //clear out everything
         ClearLevel();
+        loadingUI.enabled = true;
 
         var extensions = new [] {
                 new ExtensionFilter("Lithtech World DAT", "dat" )
@@ -56,7 +66,10 @@ public class DATReader70 : MonoBehaviour
     
     private IEnumerator LoadLevel(String szFileName)
     {
+        yield return new WaitForEndOfFrame();
         loadingUI.enabled = true;
+        yield return new WaitForEndOfFrame();
+        
         BinaryReader b = new BinaryReader(File.Open(szFileName, FileMode.Open));
 
         worldReader.ReadHeader(ref b);
@@ -82,7 +95,6 @@ public class DATReader70 : MonoBehaviour
 
         for(int i= 0; i< WMList.nNumModels; i++)
         {
-            yield return null;
             Debug.Log("Current Position: " + b.BaseStream.Position);
             nDummy = b.ReadInt32();
             anDummy = b.ReadBytes(anDummy.Length);
@@ -91,6 +103,7 @@ public class DATReader70 : MonoBehaviour
             WMList.pModelList.Add(pWorldData);
 
             WorldBsp tBSP = new WorldBsp();
+            tBSP.datVersion = worldReader.WorldHeader.nVersion;
             
         try
         {
@@ -122,7 +135,6 @@ public class DATReader70 : MonoBehaviour
         foreach(WorldBsp tBSP in bspListTest)
         {
             int it = 0;
-            yield return null;
             Debug.Log("Generating Mesh for: " + tBSP.m_szWorldName);
             if(tBSP.m_szWorldName != "VisBSP")
             {
@@ -131,7 +143,7 @@ public class DATReader70 : MonoBehaviour
                 mainObject.AddComponent<MeshFilter>();
                 mainObject.AddComponent<MeshRenderer>().material = new Material(Shader.Find("Diffuse"));
 
-                if(tBSP.m_aszTextureNames[0].Contains("Invisible.dtx") ||
+                if(tBSP.m_aszTextureNames[0].Contains("Invisible.dtx") && tBSP.WorldName != "PhysicsBSP" ||
                    tBSP.m_aszTextureNames[0].Contains("Sky.dtx"))
                 {
                     mainObject.tag = "Blocker";
@@ -234,10 +246,12 @@ public class DATReader70 : MonoBehaviour
                 }
                 
             }
+           
         }
+        yield return new WaitForEndOfFrame();
         loadingUI.enabled = false;
-
-        //yield return new WaitForEndOfFrame();
+        yield return new WaitForEndOfFrame();
+        
     }
     public void LoadObjects(ref BinaryReader b)
     {

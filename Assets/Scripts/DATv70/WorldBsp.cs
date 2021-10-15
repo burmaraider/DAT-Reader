@@ -37,6 +37,8 @@ public class WorldBsp
     {
         get{return m_szWorldName;}
     }
+
+    public int datVersion;
     public int Load(ref BinaryReader b, bool doIt)
     {
         int dwWorldInfoFlags, dwUnknown, dwUnknown2, dwUnknown3 = 0;
@@ -81,9 +83,18 @@ public class WorldBsp
         ReadPolies1(ref b);
         ReadLeafs(ref b);
         ReadPlanes(ref b);
-        ReadSurfaces(ref b);
-        ReadPoints(ref b);
+        if(datVersion == 70)
+            ReadSurfaces70(ref b);
+        else if(datVersion == 66)
+            ReadSurfaces66(ref b);
+        if(datVersion == 70)
+            ReadPoints(ref b);
         ReadPolies2(ref b);
+        if(datVersion == 66)
+        {
+            b.BaseStream.Position += m_nNodes * 14;
+            ReadPoints(ref b);
+        }
         return 1;
     }
 
@@ -188,7 +199,7 @@ public class WorldBsp
         }
     }
 
-    public void ReadSurfaces(ref BinaryReader b)
+    public void ReadSurfaces70(ref BinaryReader b)
     {
         if(m_nSurfaces > 0)
         {
@@ -198,7 +209,49 @@ public class WorldBsp
                 pSurface.m_fUV1 = DATReader70.ReadLTVector(ref b);
                 pSurface.m_fUV2 = DATReader70.ReadLTVector(ref b);
                 pSurface.m_fUV3 = DATReader70.ReadLTVector(ref b);
+                //extra stuff in .dat 66
                 pSurface.m_nTexture = b.ReadInt16();
+                pSurface.m_nFlags = b.ReadInt32();
+                pSurface.m_nUnknown1 = b.ReadByte();
+                pSurface.m_nUnknown2 = b.ReadByte();
+                pSurface.m_nUnknown3 = b.ReadByte();
+                pSurface.m_nUnknown4 = b.ReadByte();
+                pSurface.m_nUseEffect = b.ReadByte();
+
+                if(pSurface.m_nUseEffect > 0)
+                {
+                    Int16 nLen = b.ReadInt16();
+                    if(nLen > 0)
+                    {
+                        pSurface.m_szEffect = DATReader70.ReadString(nLen, ref b);
+                    }
+                    nLen = b.ReadInt16();
+                    if(nLen > 0)
+                    {
+                        pSurface.m_szEffectParam = DATReader70.ReadString(nLen, ref b);
+                    }
+                }
+
+                pSurface.m_nTextureFlags = b.ReadInt16();
+                
+                m_pSurfaces.Add(pSurface);
+            }
+        }
+    }
+
+    public void ReadSurfaces66(ref BinaryReader b)
+    {
+        if(m_nSurfaces > 0)
+        {
+            for(int i =0; i < m_nSurfaces; i++)
+            {
+                WorldSurface pSurface = new WorldSurface();
+                pSurface.m_fUV1 = DATReader70.ReadLTVector(ref b);
+                pSurface.m_fUV2 = DATReader70.ReadLTVector(ref b);
+                pSurface.m_fUV3 = DATReader70.ReadLTVector(ref b);
+                //extra stuff in .dat 66
+                pSurface.m_nTexture = b.ReadInt16();
+                b.BaseStream.Position +=4;
                 pSurface.m_nFlags = b.ReadInt32();
                 pSurface.m_nUnknown1 = b.ReadByte();
                 pSurface.m_nUnknown2 = b.ReadByte();
@@ -235,6 +288,8 @@ public class WorldBsp
             {
                 WorldVertex pVertex = new WorldVertex();
                 pVertex.m_vData = DATReader70.ReadLTVector(ref b);
+                if(datVersion == 66) // skip the normals, unity does a good enough job
+                    b.BaseStream.Position += 12;
                 m_pPoints.Add(pVertex);
             }
         }
@@ -244,7 +299,10 @@ public class WorldBsp
     {
         for(int i = 0; i < m_nPolies; i++)
         {
-            m_pPolies[i].ReadPoly(ref b);
+            if(datVersion == 70)
+                m_pPolies[i].ReadPoly70(ref b);
+            if(datVersion == 66)
+                m_pPolies[i].ReadPoly66(ref b);
         }
     }
 

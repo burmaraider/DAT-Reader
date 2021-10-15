@@ -26,7 +26,7 @@ public class WorldPoly
     //: TLTRelDiskVertList;
     public int m_nLMFrameIndex; 
 
-    public void ReadPoly(ref BinaryReader b)
+    public void ReadPoly70(ref BinaryReader b)
     {
         //Debug.Log("Position is: " + b.BaseStream.Position + "\n");
 
@@ -65,6 +65,60 @@ public class WorldPoly
         m_vUV1 = DATReader70.ReadLTVector(ref b);
         m_vUV2 = DATReader70.ReadLTVector(ref b);
         m_vUV3 = DATReader70.ReadLTVector(ref b);
+
+        int verts = GetNumVertices();
+        m_aDiskVerts = new List<DiskVert>();
+        for(int t = 0; t < verts; t++)
+        {
+            DiskVert tempDiskVert = new DiskVert();
+            tempDiskVert.nVerts = b.ReadInt16();
+            tempDiskVert.nDummy1 = b.ReadByte();
+            tempDiskVert.nDummy2 = b.ReadByte();
+            tempDiskVert.nDummy3 = b.ReadByte();
+            m_aDiskVerts.Add(tempDiskVert);
+        }
+        FillRelVerts();  
+    }
+
+    public void ReadPoly66(ref BinaryReader b)
+    {
+        //Debug.Log("Position is: " + b.BaseStream.Position + "\n");
+
+        float x,y,z;
+
+        x = b.ReadSingle();
+        y = b.ReadSingle();
+        z = b.ReadSingle();
+
+        m_vCenter = new LTVector((LTFloat)x,(LTFloat)y, (LTFloat)z);
+        m_nLightmapWidth = b.ReadInt16();
+        m_nLightmapHeight = b.ReadInt16();
+
+        m_nUnknownNum = b.ReadInt16();
+
+        if(m_nUnknownNum > 0)
+        {
+            Array.Resize(ref m_anUnknownList, m_nUnknownNum * 2);
+            
+            for(int t = 0; t < m_anUnknownList.Length; t++)
+            {
+                try
+                {
+                    m_anUnknownList[t] = b.ReadInt16();
+                }
+                catch(Exception e)
+                {
+                    Debug.Log("Failed at Pos: " + b.BaseStream.Position);
+                }
+            }
+        }
+
+        m_nSurface = b.ReadInt16();
+        m_nPlane = b.ReadInt16();
+
+        //m_vUV1 = DATReader70.ReadLTVector(ref b);
+        //m_vUV2 = DATReader70.ReadLTVector(ref b);
+        //m_vUV3 = DATReader70.ReadLTVector(ref b);
 
         int verts = GetNumVertices();
         m_aDiskVerts = new List<DiskVert>();
