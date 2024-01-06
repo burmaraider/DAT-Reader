@@ -94,4 +94,17 @@ public class ObjectPicker : MonoBehaviour
             }
         }
     }
+
+    public void ToggleObjects(System.Boolean b)
+    {
+        var levelGameObject = GameObject.Find("objects");
+
+        foreach (Transform t in levelGameObject.transform)
+        {
+            foreach (MeshRenderer mr in t.GetComponentsInChildren<MeshRenderer>())
+            {
+                mr.enabled = !mr.enabled;
+            }
+        }
+    }
 }

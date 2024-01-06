@@ -51,7 +51,7 @@ public static class DTX
         if (dtxMaterial.textures.ContainsKey(Path.GetFileName(path)))
             return;
 
-        Material mat = new Material(Shader.Find("Standard"));
+        Material mat = new Material(Shader.Find("Shader Graphs/Lithtech Vertex"));
         BinaryReader b;
 
         if (File.Exists(path))
@@ -155,6 +155,16 @@ public static class DTX
             texInfo.engineWidth /= 2;
             texInfo.engineHeight /= 2;
         }
+        if (header.m_Extra[4] == 2)
+        {
+            texInfo.engineWidth /= 4;
+            texInfo.engineHeight /= 4;
+        }
+        if (header.m_Extra[4] == 3)
+        {
+            texInfo.engineWidth /= 8;
+            texInfo.engineHeight /= 8;
+        }
     }
 
     private static void AddTextureToMaterialDictionary(string filename, Texture2D texture2D, Material mat, DTXMaterial dtxMaterial)
@@ -168,7 +178,7 @@ public static class DTX
         if (!dtxMaterial.materials.ContainsKey(filename))
         {
             mat.name = filename;
-            mat.mainTexture = dtxMaterial.textures[filename];
+            mat.SetTexture("_Albedo", dtxMaterial.textures[filename]);
             mat.SetFloat("_Metallic", 0.9f);
             mat.SetFloat("_Smoothness", 0.8f);
 

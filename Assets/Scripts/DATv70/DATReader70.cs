@@ -14,10 +14,10 @@ using UnityEngine.UI;
 
 public class DATReader70 : MonoBehaviour
 {
-
-    public List<Material> materialList = new List<Material>();
     [SerializeField]
-    public DTX.DTXMaterial material = new DTX.DTXMaterial();
+    public DTX.DTXMaterial dtxMaterialList = new DTX.DTXMaterial();
+    [SerializeField]
+    public Material defaultMaterial;
 
     public UnityEngine.UI.Text infoBox;
     public UnityEngine.UI.Text loadingUI;
@@ -25,17 +25,6 @@ public class DATReader70 : MonoBehaviour
     public WorldObjects LTGameObjects = new WorldObjects();
     WorldReader worldReader = new WorldReader();
     List<WorldBsp> bspListTest = new List<WorldBsp>();
-
-
-    private static Vector2 OpqToUV(Vector3 vertex, Vector3 o, Vector3 p, Vector3 q, float texWidth = 128.0f, float texHeight = 128.0f)
-    {
-        var point = vertex - o;
-
-        var u = Vector2.Dot(point, p) / texWidth;
-        var v = Vector2.Dot(point, q) / texHeight;
-
-        return new Vector2(u, v);
-    }
 
     public void Start()
     {
@@ -45,8 +34,9 @@ public class DATReader70 : MonoBehaviour
     public void ClearLevel()
     {
         var go = GameObject.Find("Level");
+        go.transform.localScale = new Vector3(1, 1, 1);
 
-        foreach(Transform child in go.transform)
+        foreach (Transform child in go.transform)
         {
             Destroy(child.gameObject);
         }
@@ -58,9 +48,35 @@ public class DATReader70 : MonoBehaviour
             Destroy(child.gameObject);
         }
 
+        //find all objects named New Game Object
+        GameObject[] newGameObjects = GameObject.FindObjectsOfType<GameObject>();
+
+        // List or use the found objects
+        foreach (var obj in newGameObjects)
+        {
+            if (obj.name == "New Game Object")
+            {
+                // Do something with the object
+                Destroy(obj);
+            }
+        }
+
         worldReader = new WorldReader();
         bspListTest = new List<WorldBsp>();
         LTGameObjects = new WorldObjects();
+        foreach (Texture2D tex in dtxMaterialList.textures.Values)
+        {
+            DestroyImmediate(tex);
+        }
+        foreach (Material mat in dtxMaterialList.materials.Values)
+        {
+            DestroyImmediate(mat);
+        }
+
+        dtxMaterialList = null;
+        dtxMaterialList = new DTX.DTXMaterial();
+
+        Resources.UnloadUnusedAssets();
 
     }
 
@@ -96,7 +112,7 @@ public class DATReader70 : MonoBehaviour
         yield return new WaitForEndOfFrame();
         loadingUI.enabled = true;
         yield return new WaitForEndOfFrame();
-        
+
         BinaryReader b = new BinaryReader(File.Open(szFileName[0], FileMode.Open));
 
         worldReader.ReadHeader(ref b);
@@ -166,7 +182,7 @@ public class DATReader70 : MonoBehaviour
                 GameObject mainObject = new GameObject(tBSP.WorldName);
                 mainObject.transform.parent = this.transform;
                 mainObject.AddComponent<MeshFilter>();
-                mainObject.AddComponent<MeshRenderer>().material = new Material(Shader.Find("Diffuse"));
+                mainObject.AddComponent<MeshRenderer>().material = defaultMaterial;
 
                 if(tBSP.m_aszTextureNames[0].Contains("Invisible.dtx") && tBSP.WorldName != "PhysicsBSP" ||
                    tBSP.m_aszTextureNames[0].Contains("Sky.dtx"))
@@ -188,7 +204,11 @@ public class DATReader70 : MonoBehaviour
                 //Load texture
                 foreach (var tex in tBSP.m_aszTextureNames)
                 {
-                    DTX.LoadDTX(szFileName[1] + "\\" + tex, ref material);
+                    if (Path.GetFileName(tex).Contains("mtl106b"))
+                    {
+                        Debug.Log(Path.GetFileName(tex));
+                    }
+                    DTX.LoadDTX(szFileName[1] + "\\" + tex, ref dtxMaterialList);
                 }
 
                 int id = 0;
@@ -199,15 +219,22 @@ public class DATReader70 : MonoBehaviour
                     float texWidth = 256f;
                     float texHeight = 256f;
 
+                    string szTextureName = Path.GetFileName(tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture]);
+
+                    if(id == 1915)
+                    {
+                        Debug.Log("do the thing");
+                    }
+
                     //Lookup the width and height the engine uses to calculate UV's
                     //UI Mipmap Offset changes this
-                    foreach (var mats in material.materials.Keys)
+                    foreach (var mats in dtxMaterialList.materials.Keys)
                     {
-                        string texname = Path.GetFileName(tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture]);
-                        if (mats.Contains(texname))
+                       
+                        if (mats.Contains(szTextureName))
                         {
-                            texWidth = material.texSize[texname].engineWidth;
-                            texHeight = material.texSize[texname].engineHeight;
+                            texWidth = dtxMaterialList.texSize[szTextureName].engineWidth;
+                            texHeight = dtxMaterialList.texSize[szTextureName].engineHeight;
                         }
                     }
 
@@ -229,25 +256,24 @@ public class DATReader70 : MonoBehaviour
                     p /= scale;
                     q /= scale;
 
-                    Material matReference = new Material(Shader.Find("Diffuse"));
+                    Material matReference = defaultMaterial;
 
-                    if (tPoly.m_nSurface <= tBSP.m_nTextures)
-                    {
-                        foreach (var mats in material.materials.Keys)
+
+                        foreach (var mats in dtxMaterialList.materials.Keys)
                         {
-                            string texname = Path.GetFileName(tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture]);
-                            if (mats.Contains(texname))
+                            if (mats.Contains(szTextureName))
                             {
-                                matReference = material.materials[texname];
+                                matReference = dtxMaterialList.materials[szTextureName];
                             }
                         }
-                    }
+
 
                     // CALCULATE EACH TRI INDIVIDUALLY.
                     for (int nTriIndex = 0; nTriIndex < tPoly.m_nLoVerts - 2; nTriIndex++)
                     {
                         List<Vector3> _aVertexList = new List<Vector3>();
                         List<Vector3> _aVertexNormalList = new List<Vector3>();
+                        List<Color> _aVertexColorList = new List<Color>();
                         List<Vector2> _aUVList = new List<Vector2>();
                         List<int> _aTriangleIndices = new List<int>();
 
@@ -266,6 +292,9 @@ public class DATReader70 : MonoBehaviour
 
                             Vector3 data = new Vector3(tVertex.m_vData.X, tVertex.m_vData.Y, tVertex.m_vData.Z);
                             _aVertexList.Add(data);
+
+                            Color color = new Color(tPoly.m_aVertexColorList[vCount].red / 255, tPoly.m_aVertexColorList[vCount].green / 255, tPoly.m_aVertexColorList[vCount].blue / 255, 1.0f);
+                            _aVertexColorList.Add(color);
 
                             _aVertexNormalList.Add(new Vector3(
                                 tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal.X,
@@ -289,6 +318,7 @@ public class DATReader70 : MonoBehaviour
                         m.SetVertices(_aVertexList);
                         m.SetNormals(_aVertexNormalList);
                         m.SetUVs(0, _aUVList);
+                        m.SetColors(_aVertexColorList);
 
                         //Hacky, whatever
                         _aTriangleIndices.Add(0);
@@ -301,6 +331,11 @@ public class DATReader70 : MonoBehaviour
 
                         mr.material = matReference;
                         mf.mesh = m;
+
+                        if(matReference.name.Contains("invisible") || matReference.name.Contains("Invisible") || matReference.name.Contains("Sky") || matReference.name.Contains("sky") || matReference.name.Contains("ai") || matReference.name.Contains("AI"))
+                        {
+                            mr.enabled = false;
+                        }
                     }
                     id++;
                 }
@@ -430,7 +465,7 @@ public class DATReader70 : MonoBehaviour
 
 
             var newGO = Instantiate(new GameObject(), tempObject.transform.position, Quaternion.identity);
-            newGO.transform.parent = tempObject.transform;
+            newGO.transform.SetParent(tempObject.transform);
 
             newGO.AddComponent<TextMeshPro>();
             var t = newGO.AddComponent<UnityEngine.UI.ContentSizeFitter>();
