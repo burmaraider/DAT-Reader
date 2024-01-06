@@ -21,12 +21,12 @@ public class WorldObject
 
     }
 
-public class DiskVert
+public class VertexColor
 {
     public Int16 nVerts;
-    public byte nDummy1;
-    public byte nDummy2;
-    public byte nDummy3;
+    public byte red;
+    public byte green;
+    public byte blue;
 }
 
 public class DiskRelVert

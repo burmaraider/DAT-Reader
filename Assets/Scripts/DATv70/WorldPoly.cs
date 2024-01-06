@@ -16,12 +16,12 @@ public class WorldPoly
     public Int16 m_nUnknownNum;
     //public List<Int16> m_anUnknownList;
     public Int16[] m_anUnknownList;
-    public LTVector m_vUV1;
-    public LTVector m_vUV2;
-    public LTVector m_vUV3;
+    public LTVector m_O;
+    public LTVector m_P;
+    public LTVector m_Q;
     public int m_nPlane;
     public int m_nSurface;
-    public List<DiskVert> m_aDiskVerts;
+    public List<VertexColor> m_aVertexColorList;
     public List<DiskRelVert> m_aRelDiskVerts;
     //: TLTRelDiskVertList;
     public int m_nLMFrameIndex; 
@@ -62,20 +62,20 @@ public class WorldPoly
         m_nSurface = b.ReadInt32();
         m_nPlane = b.ReadInt32();
 
-        m_vUV1 = DATReader70.ReadLTVector(ref b);
-        m_vUV2 = DATReader70.ReadLTVector(ref b);
-        m_vUV3 = DATReader70.ReadLTVector(ref b);
+        m_O = DATReader70.ReadLTVector(ref b);
+        m_P = DATReader70.ReadLTVector(ref b);
+        m_Q = DATReader70.ReadLTVector(ref b);
 
         int verts = GetNumVertices();
-        m_aDiskVerts = new List<DiskVert>();
+        m_aVertexColorList = new List<VertexColor>();
         for(int t = 0; t < verts; t++)
         {
-            DiskVert tempDiskVert = new DiskVert();
-            tempDiskVert.nVerts = b.ReadInt16();
-            tempDiskVert.nDummy1 = b.ReadByte();
-            tempDiskVert.nDummy2 = b.ReadByte();
-            tempDiskVert.nDummy3 = b.ReadByte();
-            m_aDiskVerts.Add(tempDiskVert);
+            VertexColor _vertexColors = new VertexColor();
+            _vertexColors.nVerts = b.ReadInt16();
+            _vertexColors.red = b.ReadByte();
+            _vertexColors.green = b.ReadByte();
+            _vertexColors.blue = b.ReadByte();
+            m_aVertexColorList.Add(_vertexColors);
         }
         FillRelVerts();  
     }
@@ -109,6 +109,7 @@ public class WorldPoly
                 catch(Exception e)
                 {
                     Debug.Log("Failed at Pos: " + b.BaseStream.Position);
+                    Debug.Log(e.Message);
                 }
             }
         }
@@ -121,15 +122,15 @@ public class WorldPoly
         //m_vUV3 = DATReader70.ReadLTVector(ref b);
 
         int verts = GetNumVertices();
-        m_aDiskVerts = new List<DiskVert>();
+        m_aVertexColorList = new List<VertexColor>();
         for(int t = 0; t < verts; t++)
         {
-            DiskVert tempDiskVert = new DiskVert();
-            tempDiskVert.nVerts = b.ReadInt16();
-            tempDiskVert.nDummy1 = b.ReadByte();
-            tempDiskVert.nDummy2 = b.ReadByte();
-            tempDiskVert.nDummy3 = b.ReadByte();
-            m_aDiskVerts.Add(tempDiskVert);
+            VertexColor _vertexColors = new VertexColor();
+            _vertexColors.nVerts = b.ReadInt16();
+            _vertexColors.red = b.ReadByte();
+            _vertexColors.green = b.ReadByte();
+            _vertexColors.blue = b.ReadByte();
+            m_aVertexColorList.Add(_vertexColors);
         }
         FillRelVerts();  
     }

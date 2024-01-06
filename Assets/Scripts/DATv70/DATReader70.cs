@@ -8,10 +8,17 @@ using TMPro;
 using static LTTypes.LTTypes;
 using System.Threading;
 using UnityToolbag;
-
+using System.Reflection;
+using UnityEngine.UIElements;
+using UnityEngine.UI;
 
 public class DATReader70 : MonoBehaviour
 {
+
+    public List<Material> materialList = new List<Material>();
+    [SerializeField]
+    public DTX.DTXMaterial material = new DTX.DTXMaterial();
+
     public UnityEngine.UI.Text infoBox;
     public UnityEngine.UI.Text loadingUI;
     public GameObject prefab;
@@ -20,6 +27,15 @@ public class DATReader70 : MonoBehaviour
     List<WorldBsp> bspListTest = new List<WorldBsp>();
 
 
+    private static Vector2 OpqToUV(Vector3 vertex, Vector3 o, Vector3 p, Vector3 q, float texWidth = 128.0f, float texHeight = 128.0f)
+    {
+        var point = vertex - o;
+
+        var u = Vector2.Dot(point, p) / texWidth;
+        var v = Vector2.Dot(point, q) / texHeight;
+
+        return new Vector2(u, v);
+    }
 
     public void Start()
     {
@@ -45,6 +61,7 @@ public class DATReader70 : MonoBehaviour
         worldReader = new WorldReader();
         bspListTest = new List<WorldBsp>();
         LTGameObjects = new WorldObjects();
+
     }
 
     public void LoadLevelDialog()
@@ -59,18 +76,28 @@ public class DATReader70 : MonoBehaviour
         // Open file
         var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, false);
 
-        if(paths.Length > 0)
-            StartCoroutine("LoadLevel", paths[0]);
+        if (paths.Length > 0)
+        {
+            Array.Resize(ref paths, 2);
+            var texPath = StandaloneFileBrowser.OpenFolderPanel("Open Texture Path", paths[0], false);
+            if (paths.Length > 0)
+            {
+                paths[1] = texPath[0];
+            }
+        }
+
+        if (paths.Length > 0)
+            StartCoroutine("LoadLevel", paths);
             //LoadLevel(paths[0]);
     }
     
-    private IEnumerator LoadLevel(String szFileName)
+    private IEnumerator LoadLevel(String[] szFileName)
     {
         yield return new WaitForEndOfFrame();
         loadingUI.enabled = true;
         yield return new WaitForEndOfFrame();
         
-        BinaryReader b = new BinaryReader(File.Open(szFileName, FileMode.Open));
+        BinaryReader b = new BinaryReader(File.Open(szFileName[0], FileMode.Open));
 
         worldReader.ReadHeader(ref b);
         worldReader.ReadPropertiesAndExtents(ref b);
@@ -87,7 +114,6 @@ public class DATReader70 : MonoBehaviour
         WorldData pWorldData = new WorldData();
         WorldBsp pWorldBSP = new WorldBsp();
         List<WorldBsp> pWorldBSP2 = new List<WorldBsp>();
-        int LoadBSPResult;
 
         WorldModelList WMList = new WorldModelList();
         WMList.pModelList = new List<WorldData>();
@@ -122,7 +148,7 @@ public class DATReader70 : MonoBehaviour
         b.BaseStream.Position = worldReader.WorldHeader.dwObjectDataPos;
         LoadObjects(ref b);
 
-        var actualFileName = szFileName.Split('\\');
+        var actualFileName = szFileName[0].Split('\\');
         infoBox.text = string.Format("Loaded World: {0}", actualFileName[actualFileName.Length-1]);
 
         b.BaseStream.Close();
@@ -134,7 +160,6 @@ public class DATReader70 : MonoBehaviour
         
         foreach(WorldBsp tBSP in bspListTest)
         {
-            int it = 0;
             Debug.Log("Generating Mesh for: " + tBSP.m_szWorldName);
             if(tBSP.m_szWorldName != "VisBSP")
             {
@@ -160,98 +185,137 @@ public class DATReader70 : MonoBehaviour
                 {
                     mainObject.tag = "Volumes";
                 }
-
-
-                
-                foreach(WorldPoly tPoly in tBSP.m_pPolies)
+                //Load texture
+                foreach (var tex in tBSP.m_aszTextureNames)
                 {
-                    GameObject go = new GameObject(tBSP.WorldName + it);
-                    go.transform.parent = mainObject.transform;
-                    go.transform.localScale = Vector3.one * 0.01f;
-                    MeshRenderer mr = go.AddComponent<MeshRenderer>();
-                    MeshFilter mf = go.AddComponent<MeshFilter>();
-
-                    Mesh m = new Mesh();
-
-                    List<Vector3> tVec = new List<Vector3>();
-                    List<Vector3> tNormals = new List<Vector3>();
-
-                    for(int vCount = 0; vCount < tPoly.m_nLoVerts; vCount++)
-                    {
-                        WorldVertex tVertex = tBSP.m_pPoints[tPoly.m_aDiskVerts[vCount].nVerts];
-                        tVec.Add(new Vector3(
-                            tVertex.m_vData.X, tVertex.m_vData.Y, tVertex.m_vData.Z
-                        ));
-
-                        tNormals.Add(new Vector3(
-                        tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal.X,
-                        tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal.Y,
-                        tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal.Z    
-                        ));
-                        
-                    }
-                    
-                    m.vertices = tVec.ToArray();
-
-                    //Big thanks to Amphos for this.
-                    int extra_vert_count=m.vertices.Length-3;
-                    int size = 3*extra_vert_count+3;
-                    int[] tempint = new int[1];
-                    Array.Resize(ref tempint, size);
-                    tempint[0] = 0;
-                    tempint[1] = 1;
-                    tempint[2] = 2;
-                    for(int t=1; t<=extra_vert_count; ++t)
-                    {
-                        tempint[3*t]=0;
-                        tempint[3*t+1]=tempint[3*t-1];
-                        tempint[3*t+2]=3+t-1;
-                    }
-
-                    m.SetTriangles(tempint, 0);
-                    
-                    m.Optimize();
-                    m.RecalculateNormals();
-                    
-
-                    mr.material = new Material(Shader.Find("Diffuse"));
-                    mf.mesh = m;
-                    it++;
-                    tNormals.Clear();
-                    tVec.Clear();
+                    DTX.LoadDTX(szFileName[1] + "\\" + tex, ref material);
                 }
-                
+
+                int id = 0;
+                foreach (WorldPoly tPoly in tBSP.m_pPolies)
+                {
+                    
+                    //Set our defaults;
+                    float texWidth = 256f;
+                    float texHeight = 256f;
+
+                    //Lookup the width and height the engine uses to calculate UV's
+                    //UI Mipmap Offset changes this
+                    foreach (var mats in material.materials.Keys)
+                    {
+                        string texname = Path.GetFileName(tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture]);
+                        if (mats.Contains(texname))
+                        {
+                            texWidth = material.texSize[texname].engineWidth;
+                            texHeight = material.texSize[texname].engineHeight;
+                        }
+                    }
+
+                    //Convert OPQ to UV magic
+                    Vector3 o = new Vector3();
+                    Vector3 p = new Vector3();
+                    Vector3 q = new Vector3();
+                    Vector3 center;
+                    float scale = 1.0f;
+
+                    center = new Vector3(tPoly.m_vCenter.X, tPoly.m_vCenter.Y, tPoly.m_vCenter.Z);
+
+                    o = new Vector3(tPoly.m_O.X, tPoly.m_O.Y, tPoly.m_O.Z);
+                    p = new Vector3(tPoly.m_P.X, tPoly.m_P.Y, tPoly.m_P.Z);
+                    q = new Vector3(tPoly.m_Q.X, tPoly.m_Q.Y, tPoly.m_Q.Z);
+
+                    o *= scale;
+                    o -= center;
+                    p /= scale;
+                    q /= scale;
+
+                    Material matReference = new Material(Shader.Find("Diffuse"));
+
+                    if (tPoly.m_nSurface <= tBSP.m_nTextures)
+                    {
+                        foreach (var mats in material.materials.Keys)
+                        {
+                            string texname = Path.GetFileName(tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture]);
+                            if (mats.Contains(texname))
+                            {
+                                matReference = material.materials[texname];
+                            }
+                        }
+                    }
+
+                    // CALCULATE EACH TRI INDIVIDUALLY.
+                    for (int nTriIndex = 0; nTriIndex < tPoly.m_nLoVerts - 2; nTriIndex++)
+                    {
+                        List<Vector3> _aVertexList = new List<Vector3>();
+                        List<Vector3> _aVertexNormalList = new List<Vector3>();
+                        List<Vector2> _aUVList = new List<Vector2>();
+                        List<int> _aTriangleIndices = new List<int>();
+
+                        GameObject go = new GameObject(tBSP.WorldName + id);
+                        go.transform.parent = mainObject.transform;
+                        MeshRenderer mr = go.AddComponent<MeshRenderer>();
+                        MeshFilter mf = go.AddComponent<MeshFilter>();
+
+                        Mesh m = new Mesh();
+
+                        // Do the thing
+                        for (int vCount = 0; vCount < tPoly.m_nLoVerts; vCount++)
+                        {
+                            WorldVertex tVertex = tBSP.m_pPoints[tPoly.m_aVertexColorList[vCount].nVerts];
+
+
+                            Vector3 data = new Vector3(tVertex.m_vData.X, tVertex.m_vData.Y, tVertex.m_vData.Z);
+                            _aVertexList.Add(data);
+
+                            _aVertexNormalList.Add(new Vector3(
+                                tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal.X,
+                                tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal.Y,
+                                tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal.Z
+                            ));
+
+                            // Calculate UV coordinates based on the OPQ vectors
+                            // Note that since the worlds are offset from 0,0,0 sometimes we need to subtract the center point
+                            Vector3 curVert = _aVertexList[vCount];
+                            float u = Vector3.Dot((curVert - center) - o, p);
+                            float v = Vector3.Dot((curVert - center) - o, q);
+
+                            //Scale back down into something more sane
+                            u /= texWidth;
+                            v /= texHeight;
+
+                            _aUVList.Add(new Vector2(u, v));
+                        }
+
+                        m.SetVertices(_aVertexList);
+                        m.SetNormals(_aVertexNormalList);
+                        m.SetUVs(0, _aUVList);
+
+                        //Hacky, whatever
+                        _aTriangleIndices.Add(0);
+                        _aTriangleIndices.Add(nTriIndex + 1);
+                        _aTriangleIndices.Add((nTriIndex + 2) % tPoly.m_nLoVerts);
+
+                        // Set triangles
+                        m.SetTriangles(_aTriangleIndices, 0);
+                        m.RecalculateTangents();
+
+                        mr.material = matReference;
+                        mf.mesh = m;
+                    }
+                    id++;
+                }
+
                 //combine meshes
-                MeshFilter[] meshFilters = mainObject.GetComponentsInChildren<MeshFilter>();
-                CombineInstance[] combine = new CombineInstance[meshFilters.Length];
 
-                int i = 0;
-                while (i < meshFilters.Length)
-                {
-                    combine[i].mesh = new Mesh();
-                    combine[i].mesh = meshFilters[i].mesh;
-                    combine[i].transform = meshFilters[i].transform.localToWorldMatrix;
-                    meshFilters[i].gameObject.SetActive(false);
-
-                    i++;
-                }
-                mainObject.transform.GetComponent<MeshFilter>().mesh = new Mesh();
-                mainObject.transform.GetComponent<MeshFilter>().mesh.CombineMeshes(combine);
-                mainObject.transform.gameObject.SetActive(true);
-                mainObject.AddComponent<MeshCollider>();
-
-                foreach(Transform tObj in mainObject.transform)
-                {
-                    Destroy(tObj.gameObject);
-                }
                 
             }
-           
+
         }
         yield return new WaitForEndOfFrame();
         loadingUI.enabled = false;
         yield return new WaitForEndOfFrame();
-        
+        GameObject.Find("Level").transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
+
     }
     public void LoadObjects(ref BinaryReader b)
     {
@@ -417,13 +481,13 @@ public class DATReader70 : MonoBehaviour
 
                     var splitStrings = szTemp.Split(' ');
 
-                    Vector3 tempVec = Vector3.Normalize(new Vector3(
+                    Vector3 vAmbientRGB = Vector3.Normalize(new Vector3(
                         float.Parse(splitStrings[0]),
                         float.Parse(splitStrings[1]),
                         float.Parse(splitStrings[2])
                     ));
 
-                    var color = new Color(tempVec.x, tempVec.y, tempVec.y, 255);
+                    var color = new Color(vAmbientRGB.x, vAmbientRGB.y, vAmbientRGB.y, 255);
                     RenderSettings.ambientLight = color;
                     RenderSettings.ambientIntensity = 0.5f;
                 }
@@ -535,13 +599,8 @@ public class DATReader70 : MonoBehaviour
     {
         WorldObjects temp = new WorldObjects();
         temp.obj = new List<WorldObject>();
-        
-
-        //b.BaseStream.Position = offsetData;
 
         var totalObjectCount = b.ReadInt32();
-
-
 
         for(int i = 0; i < totalObjectCount; i++)
         {
@@ -555,9 +614,7 @@ public class DATReader70 : MonoBehaviour
 
             var dataLength = b.ReadInt16(); //read out property length
 
-            //pos = (int)b.BaseStream.Position;
             tempObject.objectName = ReadString(dataLength, ref b); // read our name
-           // b.BaseStream.Position = pos + dataLength;
 
             tempObject.objectEntries = b.ReadInt16();// read how many properties this object has
 
@@ -567,10 +624,7 @@ public class DATReader70 : MonoBehaviour
             {
 
                 var tempDataLength = b.ReadInt16();
-
-                //pos = (int)b.BaseStream.Position;
                 string propertyName = ReadString(tempDataLength, ref b);
-                //b.BaseStream.Position = pos + tempDataLength;
 
                 byte propType = b.ReadByte();
 
@@ -640,7 +694,6 @@ public class DATReader70 : MonoBehaviour
         }
         return temp;
     }
-
 }
 
 
