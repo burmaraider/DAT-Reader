@@ -178,7 +178,8 @@ public static class DTX
         if (!dtxMaterial.materials.ContainsKey(filename))
         {
             mat.name = filename;
-            mat.SetTexture("_Albedo", dtxMaterial.textures[filename]);
+            //mat.SetTexture("_MainTex", dtxMaterial.textures[filename]);
+            mat.mainTexture = dtxMaterial.textures[filename];
             mat.SetFloat("_Metallic", 0.9f);
             mat.SetFloat("_Smoothness", 0.8f);
 

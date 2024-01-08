@@ -8,9 +8,12 @@ using TMPro;
 using static LTTypes.LTTypes;
 using System.Threading;
 using UnityToolbag;
+using static Utility.MaterialSafeMeshCombine;
 using System.Reflection;
 using UnityEngine.UIElements;
 using UnityEngine.UI;
+using System.Linq;
+using static DTX;
 
 public class DATReader70 : MonoBehaviour
 {
@@ -18,6 +21,8 @@ public class DATReader70 : MonoBehaviour
     public DTX.DTXMaterial dtxMaterialList = new DTX.DTXMaterial();
     [SerializeField]
     public Material defaultMaterial;
+
+    public Color defaultColor = new Color(0.5f, 0.5f, 0.5f, 1.0f);
 
     public UnityEngine.UI.Text infoBox;
     public UnityEngine.UI.Text loadingUI;
@@ -28,6 +33,7 @@ public class DATReader70 : MonoBehaviour
 
     public void Start()
     {
+        
         gameObject.AddComponent<Dispatcher>();
     }
 
@@ -35,6 +41,14 @@ public class DATReader70 : MonoBehaviour
     {
         var go = GameObject.Find("Level");
         go.transform.localScale = new Vector3(1, 1, 1);
+
+
+        //destroy all Meshes under the Level object
+        MeshFilter[] meshFilters = go.GetComponentsInChildren<MeshFilter>();
+        foreach (MeshFilter meshFilter in meshFilters)
+        {
+            DestroyImmediate(meshFilter.sharedMesh);
+        }
 
         foreach (Transform child in go.transform)
         {
@@ -77,6 +91,19 @@ public class DATReader70 : MonoBehaviour
         dtxMaterialList = new DTX.DTXMaterial();
 
         Resources.UnloadUnusedAssets();
+
+        //reset UI
+        Controller lightController = GetComponent<Controller>();
+
+        foreach (var toggle in lightController.settingsToggleList)
+        {
+            toggle.isOn = true;
+            
+            if (toggle.name == "Shadows")
+                toggle.isOn = false;
+        }
+
+        
 
     }
 
@@ -331,27 +358,127 @@ public class DATReader70 : MonoBehaviour
 
                         mr.material = matReference;
                         mf.mesh = m;
+                        mf.mesh = m;
 
-                        if(matReference.name.Contains("invisible") || matReference.name.Contains("Invisible") || matReference.name.Contains("Sky") || matReference.name.Contains("sky") || matReference.name.Contains("ai") || matReference.name.Contains("AI"))
+                        if(matReference.name.Contains("invisible.dtx", StringComparison.OrdinalIgnoreCase) || 
+                            matReference.name.Contains("sky.DTX", StringComparison.OrdinalIgnoreCase) ||
+                            matReference.name.Contains("ai.dtx", StringComparison.OrdinalIgnoreCase) ||
+                            matReference.name.Contains("ladder.dtx", StringComparison.OrdinalIgnoreCase) ||
+                            matReference.name.Contains("rain.dtx", StringComparison.OrdinalIgnoreCase))
                         {
                             mr.enabled = false;
                         }
+
+                        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
                     }
                     id++;
                 }
 
                 //combine meshes
-
+                //gameObject.MeshCombine(true);
                 
             }
 
         }
+
         yield return new WaitForEndOfFrame();
         loadingUI.enabled = false;
         yield return new WaitForEndOfFrame();
+
+        //find relfection probe and update it
+        var reflectionProbe = GameObject.Find("Main Camera").GetComponent<ReflectionProbe>().RenderProbe();
+
+
+        //remove all physics blockers... fun stuff.
+        var twms = GameObject.FindObjectsByType<TranslucentWorldModel>(FindObjectsSortMode.None);
+
+        foreach (var twm in twms)
+        {
+            if (!twm.bVisible && !twm.bChromakey)
+            {
+                //find gameobject in "Level" gameobject
+                var gameObjectToDestroy = GameObject.Find(twm.szName).GetComponent<MeshRenderer>();
+                gameObjectToDestroy.enabled = false;
+                gameObjectToDestroy.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
+                
+                
+            }
+
+            if (twm.bVisible && twm.bChromakey)
+            {
+                //var gameObjectToDestroy = GameObject.Find(twm.szName).GetComponent<MeshRenderer>();
+                
+               // Shader temp = Shader.Find("Shader Graphs/Lithtech Vertex Transparent");
+               // gameObjectToDestroy.sharedMaterial.shader = temp;
+               // gameObjectToDestroy.sharedMaterial.SetInt("_Chromakey", 1);
+            }
+
+                var twmToCombine = GameObject.Find("Level").transform.Find(twm.szName);
+            if (twmToCombine != null)
+            {
+                twmToCombine.gameObject.MeshCombine(true);
+                twmToCombine.gameObject.GetComponent<MeshFilter>().mesh.RecalculateNormals();
+            }
+        }
+        foreach (var twm in twms)
+        {
+           //GameObject.Find(twm.szName).GetComponent<MeshFilter>().mesh.RecalculateNormals();
+
+        }
+
+
+        //combine all the meshes under "Level" gameobject except for Physics BSP
+
+
+
+
+            
+        var g = GameObject.Find("PhysicsBSP");
+        Mesh[] meshes = g.GetComponentsInChildren<MeshFilter>().Select(mf => mf.sharedMesh).ToArray();
+
+
+        Debug.Log("Combining " + meshes.Length + " meshes");
+
+        g.MeshCombine(true);
+
+        //after mesh combine, we need to recalculate the normals
+        MeshFilter[] meshFilters = g.GetComponentsInChildren<MeshFilter>();
+        foreach (MeshFilter mf in meshFilters)
+        {
+            mf.mesh.RecalculateNormals();
+            mf.mesh.RecalculateTangents();
+        }
+
+        
+        var twmToAdd = GameObject.Find("Level");
+        foreach(var t in twmToAdd.gameObject.GetComponentsInChildren<MeshFilter>())
+        {
+            var mc = t.transform.gameObject.AddComponent<MeshCollider>();
+            mc.sharedMesh = t.mesh;
+        }
+
+
         GameObject.Find("Level").transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
 
+
+        //Loop through all objects under Level and add MeshFilter to a list
+        List<GameObject> toBatch = new List<GameObject>();
+
+        foreach (Transform child in GameObject.Find("Level").transform)
+        {
+            if (child.gameObject.GetComponent<MeshFilter>() != null)
+            {
+                toBatch.Add(child.gameObject);
+            }
+        }
+
+        //Batch all the objects
+        StaticBatchingUtility.Combine(toBatch.ToArray(), GameObject.Find("Level"));
+
+
     }
+
+
     public void LoadObjects(ref BinaryReader b)
     {
 
@@ -363,8 +490,10 @@ public class DATReader70 : MonoBehaviour
             Quaternion objectRot = new Quaternion();
             Vector3 rot = new Vector3();
             String objectName = String.Empty;
+            bool bInvisible = false;
+            bool bChromakey = false;
 
-            foreach(var subItem in obj.options)
+            foreach (var subItem in obj.options)
             {
                 if(subItem.Key == "Name")
                     objectName = (String)subItem.Value;
@@ -380,24 +509,45 @@ public class DATReader70 : MonoBehaviour
                     LTRotation temp = (LTRotation)subItem.Value;
                     rot = new Vector3(temp.X * Mathf.Rad2Deg, temp.Y * Mathf.Rad2Deg, temp.Z * Mathf.Rad2Deg);
                 }
+                
             }
 
             var tempObject = Instantiate(prefab, objectPos, objectRot);
-            tempObject.name = objectName;
+            tempObject.name = objectName+"_obj";
             tempObject.transform.eulerAngles = rot;
             
             if(obj.objectName == "GameStartPoint")
                 tempObject.AddComponent<GameStartPointEditor>();
 
+            if(obj.objectName == "TranslucentWorldModel")
+            {
+                string szObjectName = String.Empty;
+                foreach (var subItem in obj.options)
+                {
+                    if (subItem.Key == "Visible")
+                        bInvisible = (bool)subItem.Value;
+                    
+                    else if (subItem.Key == "Chromakey")
+                        bChromakey = (bool)subItem.Value;
+                    else if (subItem.Key == "Name")
+                        szObjectName = (String)subItem.Value;
+                }
+                
+                var twm = tempObject.AddComponent<TranslucentWorldModel>();
+                twm.bChromakey = bChromakey;
+                twm.bVisible = bInvisible;
+                twm.szName = szObjectName;
+            }
+
 
             if(obj.objectName == "Light")
             {
                 var light = tempObject.gameObject.AddComponent<Light>();
-                
-                foreach(var subItem in obj.options)
+
+                foreach (var subItem in obj.options)
                 {
                     if(subItem.Key == "LightRadius")
-                        light.range = (float)subItem.Value * 0.020f;
+                        light.range = (float)subItem.Value * 0.20f;
 
                     else if(subItem.Key == "LightColor")
                     {
@@ -407,14 +557,28 @@ public class DATReader70 : MonoBehaviour
                     }
 
                     else if(subItem.Key == "BrightScale")
-                        light.intensity = (float)subItem.Value * 0.5f;          
+                        light.intensity = (float)subItem.Value * 0.75f;          
                 }
                 light.shadows = LightShadows.Soft;
+                
+                Controller lightController = transform.GetComponent<Controller>();
+
+                foreach (var toggle in lightController.settingsToggleList)
+                {
+                    if (toggle.name == "Shadows")
+                    {
+                        if (toggle.isOn)
+                            light.shadows = LightShadows.Soft;
+                        else
+                            light.shadows = LightShadows.None;
+                    }
+                }
             }
 
             if(obj.objectName == "DirLight")
             {
                 var light = tempObject.gameObject.AddComponent<Light>();
+
                 
                 foreach(var subItem in obj.options)
                 {
@@ -422,7 +586,7 @@ public class DATReader70 : MonoBehaviour
                         light.spotAngle = (float)subItem.Value;
 
                     else if(subItem.Key == "LightRadius")
-                        light.range = (float)subItem.Value * 0.015f;
+                        light.range = (float)subItem.Value * 0.025f;
 
                     else if(subItem.Key == "InnerColor")
                     {
@@ -432,11 +596,24 @@ public class DATReader70 : MonoBehaviour
                     }
 
                     else if(subItem.Key == "BrightScale")
-                        light.intensity = (float)subItem.Value * 0.5f;
+                        light.intensity = (float)subItem.Value * 0.65f;
                 }
 
                 light.shadows = LightShadows.Soft;
                 light.type = LightType.Spot;
+
+                Controller lightController = GetComponent<Controller>();
+
+                foreach (var toggle in lightController.settingsToggleList)
+                {
+                    if (toggle.name == "Shadows")
+                    {
+                        if (toggle.isOn)
+                            light.shadows = LightShadows.Soft;
+                        else
+                            light.shadows = LightShadows.None;
+                    }
+                }
             }
 
             if(obj.objectName == "StaticSunLight")
@@ -452,11 +629,24 @@ public class DATReader70 : MonoBehaviour
                         light.color = new Color(col.x, col.y, col.z);
                     }
                     else if(subItem.Key == "BrightScale")
-                        light.intensity = (float)subItem.Value * 0.15f;
+                        light.intensity = (float)subItem.Value * 0.65f;
                 }
 
                 light.shadows = LightShadows.Soft;
                 light.type = LightType.Directional;
+                
+                Controller lightController = GetComponent<Controller>();
+
+                foreach (var toggle in lightController.settingsToggleList)
+                {
+                    if (toggle.name == "Shadows")
+                    {
+                        if (toggle.isOn)
+                            light.shadows = LightShadows.Soft;
+                        else
+                            light.shadows = LightShadows.None;
+                    }
+                }
             }
 
             var g = GameObject.Find("objects");
@@ -524,7 +714,9 @@ public class DATReader70 : MonoBehaviour
 
                     var color = new Color(vAmbientRGB.x, vAmbientRGB.y, vAmbientRGB.y, 255);
                     RenderSettings.ambientLight = color;
-                    RenderSettings.ambientIntensity = 0.5f;
+                    defaultColor = color;
+                    RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                    RenderSettings.ambientIntensity = 1.0f;
                 }
             }
         }
@@ -730,5 +922,3 @@ public class DATReader70 : MonoBehaviour
         return temp;
     }
 }
-
-
