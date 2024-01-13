@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using static LTTypes.LTTypes;
+using static LithFAQ.LTTypes;
+using static LithFAQ.LTUtils;
 
 public class WorldBsp
 {
@@ -47,7 +48,7 @@ public class WorldBsp
         m_nWorldInfoFlags = (short)b.ReadInt32();
         dwUnknown = b.ReadInt32();
         nNameLen = b.ReadInt16();
-        m_szWorldName = DATReader70.ReadString(nNameLen, ref b);
+        m_szWorldName = ReadString(nNameLen, ref b);
 
         if(nNameLen == 0 || nNameLen > 255)
         {
@@ -70,12 +71,15 @@ public class WorldBsp
         dwUnknown2 = b.ReadInt32();
         dwUnknown3 = b.ReadInt32();
 
-        m_vMinBox = DATReader70.ReadLTVector(ref b);
-        m_vMaxBox = DATReader70.ReadLTVector(ref b);
-        m_vWorldTranslation = DATReader70.ReadLTVector(ref b);
+        m_vMinBox = ReadLTVector(ref b);
+        m_vMaxBox = ReadLTVector(ref b);
+        m_vWorldTranslation = ReadLTVector(ref b);
 
         m_nNamesLen = b.ReadInt32();
-        m_nTextures = b.ReadInt32();
+        m_nTextures = b.ReadInt32(); //66 this is the number of OPQ textures, 70 this is the number of textures
+
+        //if(datVersion == 66)
+            //m_nSurfaces = m_nTextures; //66 this is the number of OPQ textures, 70 this is the number of textures
 
 
         //read textures
@@ -192,7 +196,7 @@ public class WorldBsp
             for(int i =0; i< m_nPlanes; i++)
             {
                 WorldPlane pPlane = new WorldPlane();
-                pPlane.m_vNormal = DATReader70.ReadLTVector(ref b);
+                pPlane.m_vNormal = ReadLTVector(ref b);
                 pPlane.m_fDist = b.ReadSingle();
                 m_pPlanes.Add(pPlane);
             }
@@ -206,9 +210,9 @@ public class WorldBsp
             for(int i =0; i < m_nSurfaces; i++)
             {
                 WorldSurface pSurface = new WorldSurface();
-                pSurface.m_fUV1 = DATReader70.ReadLTVector(ref b);
-                pSurface.m_fUV2 = DATReader70.ReadLTVector(ref b);
-                pSurface.m_fUV3 = DATReader70.ReadLTVector(ref b);
+                pSurface.m_fUV1 = ReadLTVector(ref b);
+                pSurface.m_fUV2 = ReadLTVector(ref b);
+                pSurface.m_fUV3 = ReadLTVector(ref b);
                 //extra stuff in .dat 66
                 pSurface.m_nTexture = b.ReadInt16();
                 pSurface.m_nFlags = b.ReadInt32();
@@ -223,12 +227,12 @@ public class WorldBsp
                     Int16 nLen = b.ReadInt16();
                     if(nLen > 0)
                     {
-                        pSurface.m_szEffect = DATReader70.ReadString(nLen, ref b);
+                        pSurface.m_szEffect = ReadString(nLen, ref b);
                     }
                     nLen = b.ReadInt16();
                     if(nLen > 0)
                     {
-                        pSurface.m_szEffectParam = DATReader70.ReadString(nLen, ref b);
+                        pSurface.m_szEffectParam = ReadString(nLen, ref b);
                     }
                 }
 
@@ -246,9 +250,9 @@ public class WorldBsp
             for(int i =0; i < m_nSurfaces; i++)
             {
                 WorldSurface pSurface = new WorldSurface();
-                pSurface.m_fUV1 = DATReader70.ReadLTVector(ref b);
-                pSurface.m_fUV2 = DATReader70.ReadLTVector(ref b);
-                pSurface.m_fUV3 = DATReader70.ReadLTVector(ref b);
+                pSurface.m_fUV1 = ReadLTVector(ref b);
+                pSurface.m_fUV2 = ReadLTVector(ref b);
+                pSurface.m_fUV3 = ReadLTVector(ref b);
                 //extra stuff in .dat 66
                 pSurface.m_nTexture = b.ReadInt16();
                 b.BaseStream.Position +=4;
@@ -264,12 +268,12 @@ public class WorldBsp
                     Int16 nLen = b.ReadInt16();
                     if(nLen > 0)
                     {
-                        pSurface.m_szEffect = DATReader70.ReadString(nLen, ref b);
+                        pSurface.m_szEffect = ReadString(nLen, ref b);
                     }
                     nLen = b.ReadInt16();
                     if(nLen > 0)
                     {
-                        pSurface.m_szEffectParam = DATReader70.ReadString(nLen, ref b);
+                        pSurface.m_szEffectParam = ReadString(nLen, ref b);
                     }
                 }
 
@@ -287,7 +291,7 @@ public class WorldBsp
             for(int i = 0; i < m_nPoints; i++)
             {
                 WorldVertex pVertex = new WorldVertex();
-                pVertex.m_vData = DATReader70.ReadLTVector(ref b);
+                pVertex.m_vData = ReadLTVector(ref b);
                 if(datVersion == 66) // skip the normals, unity does a good enough job
                     b.BaseStream.Position += 12;
                 m_pPoints.Add(pVertex);

@@ -2,8 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
-using static LTTypes.LTTypes;
-
+using static LithFAQ.LTTypes;
+using static LithFAQ.LTUtils;
 
 public class WorldTreeNode
     {
@@ -120,8 +120,8 @@ public class WorldTreeNode
             WorldTreeNode pNewNode;
 
             nDummyTerrainDepth = 0;
-            vBoxMin = DATReader70.ReadLTVector(ref b);
-            vBoxMax = DATReader70.ReadLTVector(ref b);
+            vBoxMin = ReadLTVector(ref b);
+            vBoxMax = ReadLTVector(ref b);
 
             nNumNode = b.ReadInt32();
             nDummyTerrainDepth = b.ReadInt32();

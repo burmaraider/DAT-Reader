@@ -104,7 +104,7 @@ Material:
     - _BUILTIN_QueueOffset: 0
     - _BlendMode: 0
     - _BumpScale: 1
-    - _Chromakey: 1
+    - _Chromakey: 0
     - _ConservativeDepthOffsetEnable: 0
     - _CullMode: 2
     - _CullModeForward: 2

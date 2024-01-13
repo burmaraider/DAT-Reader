@@ -5,8 +5,7 @@ using UnityEngine.EventSystems;
 public class ObjectPicker : MonoBehaviour
 {
 
-    private GameObject selectedObject;
-    private GameObject pastSelectedObject;
+    public GameObject selectedObject;
     public Text infoBox;
 
     void Update()
@@ -15,37 +14,41 @@ public class ObjectPicker : MonoBehaviour
         {
             if ( Input.GetMouseButtonDown (0))
             { 
+                if(selectedObject != null)
+                {
+                    selectedObject.layer = 0;
+                    infoBox.text = string.Format("");
+                }
+
                 RaycastHit hit; 
                 Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition); 
                 if ( Physics.Raycast (ray,out hit,10000.0f)) 
                 {
                     if(hit.transform.name != "PhysicsBSP")
                     {
-                        infoBox.text = string.Format("Selected Object: {0}\n", hit.transform.name);
+                        infoBox.text = string.Format("Selected Object: {0}", hit.transform.name);
 
-                        if(pastSelectedObject == null)
+                        //change selected game object to layer 6 if selected, and 0 if deselected
+                        if (selectedObject != null)
                         {
-                            selectedObject = hit.transform.gameObject;
-                            selectedObject.AddComponent<cakeslice.Outline>();
-                            pastSelectedObject = selectedObject;
+                            selectedObject.layer = 0;
                         }
-
-                        else
-                        {
-                            selectedObject = hit.transform.gameObject;
-                            selectedObject.AddComponent<cakeslice.Outline>();
-                            Destroy(pastSelectedObject.GetComponent<cakeslice.Outline>());
-                            pastSelectedObject = selectedObject;
-                        }
+                        selectedObject = hit.transform.gameObject;
+                        selectedObject.layer = 6;
                     }
                 }
             }
             if(Input.GetKeyDown(KeyCode.Delete))
             {
+                if (selectedObject == null)
+                {
+                    infoBox.text = string.Format("No object selected");
+                    return;
+                }
+                
+                infoBox.text = string.Format("Deleted Object: {0}", selectedObject.name);
                 Destroy(selectedObject);
-                pastSelectedObject = null;
-
-                infoBox.text = string.Format("Deleted Object: {0}\n", selectedObject.name);
+                selectedObject = null;
             }
         }
     }

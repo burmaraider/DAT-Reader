@@ -3,7 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
-using static LTTypes.LTTypes;
+using static LithFAQ.LTTypes;
+using static LithFAQ.LTUtils;
 
 public class WorldPoly
 {
@@ -54,6 +55,7 @@ public class WorldPoly
                 }
                 catch(Exception e)
                 {
+                    
                     Debug.Log("Failed at Pos: " + b.BaseStream.Position);
                 }
             }
@@ -62,9 +64,9 @@ public class WorldPoly
         m_nSurface = b.ReadInt32();
         m_nPlane = b.ReadInt32();
 
-        m_O = DATReader70.ReadLTVector(ref b);
-        m_P = DATReader70.ReadLTVector(ref b);
-        m_Q = DATReader70.ReadLTVector(ref b);
+        m_O = ReadLTVector(ref b);
+        m_P = ReadLTVector(ref b);
+        m_Q = ReadLTVector(ref b);
 
         int verts = GetNumVertices();
         m_aVertexColorList = new List<VertexColor>();
@@ -117,9 +119,7 @@ public class WorldPoly
         m_nSurface = b.ReadInt16();
         m_nPlane = b.ReadInt16();
 
-        //m_vUV1 = DATReader70.ReadLTVector(ref b);
-        //m_vUV2 = DATReader70.ReadLTVector(ref b);
-        //m_vUV3 = DATReader70.ReadLTVector(ref b);
+        
 
         int verts = GetNumVertices();
         m_aVertexColorList = new List<VertexColor>();
@@ -132,6 +132,12 @@ public class WorldPoly
             _vertexColors.blue = b.ReadByte();
             m_aVertexColorList.Add(_vertexColors);
         }
+
+        m_O = ReadLTVector(ref b);
+        m_P = ReadLTVector(ref b);
+        m_Q = ReadLTVector(ref b);
+
+        b.BaseStream.Position -= 36;
         FillRelVerts();  
     }
 

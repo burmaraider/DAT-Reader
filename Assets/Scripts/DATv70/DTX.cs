@@ -45,11 +45,18 @@ public static class DTX
         public int engineWidth;
         public int engineHeight;
     }
+    
+    public enum DTXReturn
+    {
+        ALREADYEXISTS,
+        SUCCESS,
+        FAILED
+    };
 
-    public static void LoadDTX(string path, ref DTXMaterial dtxMaterial)
+    public static DTXReturn LoadDTX(string path, ref DTXMaterial dtxMaterial, string projectPath = "")
     {
         if (dtxMaterial.textures.ContainsKey(Path.GetFileName(path)))
-            return;
+            return DTXReturn.ALREADYEXISTS;
 
         Material mat = new Material(Shader.Find("Shader Graphs/Lithtech Vertex"));
         BinaryReader b;
@@ -60,14 +67,19 @@ public static class DTX
 
             if (path.Contains(".spr") || path.Contains(".SPR"))
             {
-                newPath = GetSpriteFilePath(path);
+                newPath = GetSpriteFilePath(path, projectPath);
             }
 
             b = new BinaryReader(File.Open(newPath, FileMode.Open));
         }
         else
         {
-            string newPathCantFind = GetDefaultTexturePath(path);
+            string newPathCantFind = GetDefaultTexturePath(projectPath);
+
+            //Bail out if we cant find the files
+            if (String.IsNullOrEmpty(newPathCantFind))
+                return DTXReturn.FAILED;
+
             b = new BinaryReader(File.Open(newPathCantFind, FileMode.Open));
         }
 
@@ -94,9 +106,11 @@ public static class DTX
         AddTextureToMaterialDictionary(filename, texture2D, mat, dtxMaterial);
         AddMaterialToMaterialDictionary(filename, mat, dtxMaterial);
         AddTexSizeToDictionary(filename, texInfo, dtxMaterial);
+
+        return DTXReturn.SUCCESS;
     }
 
-    private static string GetSpriteFilePath(string path)
+    private static string GetSpriteFilePath(string path, string projectPath = "")
     {
         BinaryReader spriteReader = new BinaryReader(File.Open(path, FileMode.Open));
         spriteReader.BaseStream.Position = 20;
@@ -105,15 +119,23 @@ public static class DTX
         byte[] stringBytes = spriteReader.ReadBytes(strLength);
         string fileName = System.Text.Encoding.Default.GetString(stringBytes);
 
-        string[] dir = path.Split(new[] { "AVP2\\" }, StringSplitOptions.None);
-
-        return dir[0] + "AVP2\\" + fileName;
+        return projectPath + "\\" + fileName;
     }
 
-    private static string GetDefaultTexturePath(string path)
+    private static string GetDefaultTexturePath(string projectPath = "")
     {
-        string[] dir = path.Split(new[] { "AVP2\\" }, StringSplitOptions.None);
-        return dir[0] + "AVP2\\WorldTextures\\invisible.dtx";
+
+        //Check if WorldTextures\invisible.dtx exists, if not then check Tex\invisible.dtx
+        //This should cover most lithtech games
+        string newPath = projectPath + "\\WorldTextures\\invisible.dtx";
+        if (File.Exists(newPath))
+            return newPath;
+
+        newPath = projectPath + "\\Tex\\invisible.dtx";
+        if (File.Exists(newPath))
+            return newPath;
+
+        return String.Empty;
     }
 
     private static DTX.DTXHeader ReadDTXHeader(BinaryReader reader)
@@ -134,7 +156,7 @@ public static class DTX
     private static TextureFormat GetTextureFormat(byte identElement)
     {
         if (identElement == 6) return TextureFormat.DXT5;
-        if (identElement == 5) return TextureFormat.DXT1; //DXT3 not supported by Unity, so default to DXT1, this will cause some textures to look bad
+        if (identElement == 5) return TextureFormat.DXT5Crunched; // we use crunched as dxt3
         if (identElement == 4) return TextureFormat.DXT1;
         if (identElement == 3) return TextureFormat.BGRA32;
         return TextureFormat.DXT5; // Default to DXT5
@@ -142,9 +164,23 @@ public static class DTX
 
     private static Texture2D CreateTexture(DTX.DTXHeader header, byte[] texArray, TextureFormat textureFormat)
     {
-        Texture2D texture2D = new Texture2D(header.m_BaseWidth, header.m_BaseHeight, textureFormat, false);
-        texture2D.LoadRawTextureData(texArray);
-        texture2D.Apply();
+        Texture2D texture2D;
+
+        //TODO: Add support for DXT3
+        if (textureFormat == TextureFormat.DXT5Crunched)
+        {
+            texture2D = new Texture2D(header.m_BaseWidth, header.m_BaseHeight, TextureFormat.DXT5, false);
+            texture2D.LoadRawTextureData(texArray);
+
+            texture2D.Apply();
+        }
+        else
+        {
+            texture2D = new Texture2D(header.m_BaseWidth, header.m_BaseHeight, textureFormat, false);
+            texture2D.LoadRawTextureData(texArray);
+            texture2D.Apply();
+        }
+
         return texture2D;
     }
 
@@ -194,5 +230,4 @@ public static class DTX
             dtxMaterial.texSize.Add(filename, texInfo);
         }
     }
-
 }

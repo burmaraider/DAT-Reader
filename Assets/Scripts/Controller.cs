@@ -1,3 +1,4 @@
+using LithFAQ;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,7 +7,6 @@ using UnityEngine.EventSystems;
 public class Controller : MonoBehaviour
 {
     public List<UnityEngine.UI.Toggle> settingsToggleList;
-        
     // Start is called before the first frame update
     void Start()
     {
@@ -32,7 +32,6 @@ public class Controller : MonoBehaviour
 
     private void LateUpdate()
     {
-        
     }
 
     private void Awake()
@@ -42,7 +41,7 @@ public class Controller : MonoBehaviour
 
     public void ChangeAmbientLighting(UnityEngine.UI.Slider slider)
     {
-        Color col = GameObject.Find("Level").GetComponent<DATReader70>().defaultColor;
+        Color col = GameObject.Find("Level").GetComponent<DATReader70>().importer.defaultColor;
         RenderSettings.ambientLight = col *= slider.value;
         RenderSettings.ambientIntensity = slider.value;
     }

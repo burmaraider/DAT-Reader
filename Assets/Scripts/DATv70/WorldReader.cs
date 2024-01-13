@@ -1,16 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using static LTTypes.LTTypes;
+using static LithFAQ.LTTypes;
+using static LithFAQ.LTUtils;
 
 public class WorldReader
 {
     public TWorldHeader WorldHeader = new TWorldHeader();
     public String WorldProperties;
     TWorldExtents WorldExtents = new TWorldExtents();
-
-
-
 
     public struct TWorldHeader
     {
@@ -53,11 +51,11 @@ public class WorldReader
     {
         int nLen = b.ReadInt32();
         if(nLen > 0)
-            WorldProperties = DATReader70.ReadString(nLen, ref b);
+            WorldProperties = ReadString(nLen, ref b);
 
         WorldExtents.fLMGridSize = b.ReadSingle();
-        WorldExtents.vExtentsMin = DATReader70.ReadLTVector(ref b);
-        WorldExtents.vExtentsMax = DATReader70.ReadLTVector(ref b);
+        WorldExtents.vExtentsMin = ReadLTVector(ref b);
+        WorldExtents.vExtentsMax = ReadLTVector(ref b);
     }
 
 }
