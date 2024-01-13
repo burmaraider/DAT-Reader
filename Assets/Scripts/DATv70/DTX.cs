@@ -6,6 +6,21 @@ using UnityEngine;
 public static class DTX
 {
     public static int identElement = 2;
+
+    [Flags]
+    public enum DTXFlags
+    {
+        FULLBRIGHT = 0x01,
+        PREFER16BIT = 0x02,
+        UNK1 = 0x04,
+        UNK2 = 0x08,
+        UNK3 = 0x10,
+        UNK4 = 0x20,
+        UNK5 = 0x40,
+        PREFER4444 = 0x80,
+        PREFER5551 = 0x100,
+
+    }
     public struct DTXHeader
     {
         public UInt32 m_ResType;
@@ -44,6 +59,7 @@ public static class DTX
         public int height;
         public int engineWidth;
         public int engineHeight;
+        public bool bFullBright;
     }
     
     public enum DTXReturn
@@ -102,6 +118,13 @@ public static class DTX
 
         ApplyMipMapOffset(header, ref texInfo);
 
+        //do we need to apply fullbright?
+        if ((header.m_IFlags & (int)DTXFlags.FULLBRIGHT) != 0)
+        {
+            texInfo.bFullBright = true;
+            mat.SetInt("_FullBright", 1);
+        }
+
         string filename = Path.GetFileName(path);
         AddTextureToMaterialDictionary(filename, texture2D, mat, dtxMaterial);
         AddMaterialToMaterialDictionary(filename, mat, dtxMaterial);
@@ -113,11 +136,12 @@ public static class DTX
     private static string GetSpriteFilePath(string path, string projectPath = "")
     {
         BinaryReader spriteReader = new BinaryReader(File.Open(path, FileMode.Open));
-        spriteReader.BaseStream.Position = 20;
+        spriteReader.BaseStream.Position = 20; //jump past the header and read the first texture
 
         int strLength = spriteReader.ReadUInt16();
         byte[] stringBytes = spriteReader.ReadBytes(strLength);
         string fileName = System.Text.Encoding.Default.GetString(stringBytes);
+        spriteReader.Close();
 
         return projectPath + "\\" + fileName;
     }
@@ -159,28 +183,20 @@ public static class DTX
         if (identElement == 5) return TextureFormat.DXT5Crunched; // we use crunched as dxt3
         if (identElement == 4) return TextureFormat.DXT1;
         if (identElement == 3) return TextureFormat.BGRA32;
-        return TextureFormat.DXT5; // Default to DXT5
+        return TextureFormat.BGRA32; // Default to BGRA32
     }
 
     private static Texture2D CreateTexture(DTX.DTXHeader header, byte[] texArray, TextureFormat textureFormat)
     {
         Texture2D texture2D;
 
-        //TODO: Add support for DXT3
+        //TODO: Add full support for DXT3. 4 bit alpha
         if (textureFormat == TextureFormat.DXT5Crunched)
-        {
-            texture2D = new Texture2D(header.m_BaseWidth, header.m_BaseHeight, TextureFormat.DXT5, false);
-            texture2D.LoadRawTextureData(texArray);
-
-            texture2D.Apply();
-        }
-        else
-        {
-            texture2D = new Texture2D(header.m_BaseWidth, header.m_BaseHeight, textureFormat, false);
-            texture2D.LoadRawTextureData(texArray);
-            texture2D.Apply();
-        }
-
+            textureFormat = TextureFormat.DXT5;
+ 
+        texture2D = new Texture2D(header.m_BaseWidth, header.m_BaseHeight, textureFormat, false);
+        texture2D.LoadRawTextureData(texArray);
+        texture2D.Apply();
         return texture2D;
     }
 
@@ -209,18 +225,38 @@ public static class DTX
             dtxMaterial.textures.Add(filename, texture2D);
     }
 
-    private static void AddMaterialToMaterialDictionary(string filename, Material mat, DTXMaterial dtxMaterial)
+    public static void AddMaterialToMaterialDictionary(string filename, Material mat, DTXMaterial dtxMaterial)
     {
         if (!dtxMaterial.materials.ContainsKey(filename))
         {
             mat.name = filename;
-            //mat.SetTexture("_MainTex", dtxMaterial.textures[filename]);
+
+            String[] splitName;
+            if (mat.name.Contains("_Chromakey"))
+            {
+                splitName = mat.name.Split("_Chromakey");
+                mat.mainTexture = dtxMaterial.textures[splitName[0]];
+                mat.SetFloat("_Metallic", 0.9f);
+                mat.SetFloat("_Smoothness", 0.8f);
+                mat.SetColor("_Color", Color.white);
+                dtxMaterial.materials.Add(filename, mat);
+                return;
+            }
+            
             mat.mainTexture = dtxMaterial.textures[filename];
             mat.SetFloat("_Metallic", 0.9f);
             mat.SetFloat("_Smoothness", 0.8f);
 
             dtxMaterial.materials.Add(filename, mat);
         }
+    }
+    public static Material GetMaterialFromMaterialDictionary(string filename, DTXMaterial dtxMaterial)
+    {
+        if (dtxMaterial.materials.ContainsKey(filename))
+        {
+            return dtxMaterial.materials[filename];
+        }
+        return null;
     }
 
     private static void AddTexSizeToDictionary(string filename, texSize texInfo, DTXMaterial dtxMaterial)

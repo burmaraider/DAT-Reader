@@ -8,6 +8,25 @@ using static LithFAQ.LTTypes;
 
 namespace LithFAQ
 {
+    [Flags]
+    public enum BitMask
+    {
+        SOLID = 0x01,
+        NONEXISTENT = 0x02,
+        INVISIBLE = 0x04,
+        TRANSLUCENT = 0x08,
+        SKY = 0x10,
+        BRIGHT = 0x20,
+        FLATSHADE = 0x40,
+        LIGHTMAP = 0x80,
+        NOSUBDIVIDE = 0x100,
+        HULL = 0x200,
+        DIRECTIONLIGHT = 0x400,
+        GOURAUD = 0x800,
+        PORTAL = 0x1000,
+        PANNINGSKY = 0x1000,
+    }
+    
     public static class LTUtils
     {
         public static String ReadString(int dataLength, ref BinaryReader b)
@@ -80,7 +99,9 @@ namespace LithFAQ
         public static Int64 ReadLongInt(ref BinaryReader b)
         {
             //Read the Int64
-            return b.ReadInt64();
+            b.BaseStream.Position += 4;
+            int temp = (int)b.ReadSingle();
+            return temp;
         }
 
         /// <summary>

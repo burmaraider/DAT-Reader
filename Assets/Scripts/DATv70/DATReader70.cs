@@ -11,6 +11,11 @@ using static Utility.MaterialSafeMeshCombine;
 using System.Linq;
 using static DTX;
 using System;
+using Unity.Jobs;
+using UnityEngine.UIElements;
+using UnityEngine.Networking;
+using System.Media;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Tab;
 
 namespace LithFAQ
 {
@@ -23,9 +28,10 @@ namespace LithFAQ
         WorldReader worldReader = new WorldReader();
         List<WorldBsp> bspListTest = new List<WorldBsp>();
 
-        public float scale = 0.01f; //default scale to fit in Unity's world.
+        public float UNITYSCALEFACTOR = 0.01f; //default scale to fit in Unity's world.
 
         public Importer importer;
+        private BinaryReader ba;
 
         public void Start()
         {
@@ -108,15 +114,19 @@ namespace LithFAQ
             importer = gameObject.GetComponent<Importer>();
 
             ClearLevel();
-            StartCoroutine("LoadLevel", b);
+
+            LoadLevel(b);
         }
 
-        public IEnumerator LoadLevel(BinaryReader b)
+
+        public async void LoadLevel(BinaryReader b)
         {
             Debug.Log("Loading Level...");
             //yield return new WaitForEndOfFrame();
             importer.loadingUI.enabled = true;
-            yield return new WaitForEndOfFrame();
+            await System.Threading.Tasks.Task.Yield();
+            //yield return new WaitForEndOfFrame();
+
 
             worldReader.ReadHeader(ref b);
             worldReader.ReadPropertiesAndExtents(ref b);
@@ -127,12 +137,9 @@ namespace LithFAQ
 
             //read world models...
             byte[] anDummy = new byte[32];
-            String szDump = String.Empty;
-            int nDummy = 0;
+            int nNextWMPosition = 0;
 
             WorldData pWorldData = new WorldData();
-            WorldBsp pWorldBSP = new WorldBsp();
-            List<WorldBsp> pWorldBSP2 = new List<WorldBsp>();
 
             WorldModelList WMList = new WorldModelList();
             WMList.pModelList = new List<WorldData>();
@@ -141,10 +148,10 @@ namespace LithFAQ
             for (int i = 0; i < WMList.nNumModels; i++)
             {
                 //Debug.Log("Current Position: " + b.BaseStream.Position);
-                nDummy = b.ReadInt32();
+                nNextWMPosition = b.ReadInt32();
                 anDummy = b.ReadBytes(anDummy.Length);
 
-                pWorldData.NextPos = nDummy;
+                pWorldData.NextPos = nNextWMPosition;
                 WMList.pModelList.Add(pWorldData);
 
                 WorldBsp tBSP = new WorldBsp();
@@ -160,7 +167,7 @@ namespace LithFAQ
                     Debug.Log(e.Message);
                 }
 
-                b.BaseStream.Position = nDummy;
+                b.BaseStream.Position = nNextWMPosition;
             }
 
             b.BaseStream.Position = worldReader.WorldHeader.dwObjectDataPos;
@@ -171,7 +178,8 @@ namespace LithFAQ
             b.BaseStream.Close();
 
             importer.loadingUI.text = "Loading Objects";
-            yield return new WaitForEndOfFrame();
+            await System.Threading.Tasks.Task.Yield();
+            //yield return new WaitForEndOfFrame();
 
             int id = 0;
             foreach (WorldBsp tBSP in bspListTest)
@@ -179,27 +187,29 @@ namespace LithFAQ
                 if (tBSP.m_szWorldName.Contains("PhysicsBSP"))
                 {
                     importer.loadingUI.text = "Loading BSP";
-                    yield return new WaitForEndOfFrame();
+                    await System.Threading.Tasks.Task.Yield();
+                    //yield return new WaitForEndOfFrame();
                 }
 
                 if (tBSP.m_szWorldName != "VisBSP")
                 {
+                    bool isPartOfObject = !tBSP.m_szWorldName.Contains("PhysicsBSP");
+
                     GameObject mainObject = new GameObject(tBSP.WorldName);
                     mainObject.transform.parent = this.transform;
                     mainObject.AddComponent<MeshFilter>();
                     mainObject.AddComponent<MeshRenderer>().material = importer.defaultMaterial;
 
-                    if (tBSP.m_aszTextureNames[0].Contains("Invisible.dtx") && tBSP.WorldName != "PhysicsBSP" ||
-                       tBSP.m_aszTextureNames[0].Contains("Sky.dtx"))
-                    {
-                        mainObject.tag = "Blocker";
-                    }
+                    //if (tBSP.m_aszTextureNames[0].Contains("Invisible.dtx") && tBSP.WorldName != "PhysicsBSP" ||
+                    //   tBSP.m_aszTextureNames[0].Contains("Sky.dtx"))
+                    //{
+                    //    mainObject.tag = "Blocker";
+                    //}
+                    
 
                     if (tBSP.m_aszTextureNames[0].Contains("AI.dtx") ||
                         tBSP.m_szWorldName.Contains("Volume") ||
                         tBSP.m_szWorldName.Contains("Water") ||
-                        tBSP.m_szWorldName.Contains("Rain") ||
-                        tBSP.m_szWorldName.Contains("rain") ||
                         tBSP.m_szWorldName.Contains("weather") ||
                         tBSP.m_szWorldName.Contains("Weather") ||
                         tBSP.m_szWorldName.Contains("Ladder"))
@@ -211,13 +221,19 @@ namespace LithFAQ
 
                     foreach (WorldPoly tPoly in tBSP.m_pPolies)
                     {
-
+                        //remove all bsp invisible
+                         if (tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Invisible", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+                        
                         float texWidth = 256f;
                         float texHeight = 256f;
 
                         string szTextureName = Path.GetFileName(tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture]);
 
-                        if (szTextureName.Contains("sky", StringComparison.OrdinalIgnoreCase))
+                        //skip sky portals
+                        if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.SKY) == (int)BitMask.SKY)
                         {
                             continue;
                         }
@@ -231,10 +247,10 @@ namespace LithFAQ
                         Vector3 p = tPoly.m_P;
                         Vector3 q = tPoly.m_Q;
 
-                        o *= scale;
+                        o *= UNITYSCALEFACTOR;
                         o -= (Vector3)tPoly.m_vCenter;
-                        p /= scale;
-                        q /= scale;
+                        p /= UNITYSCALEFACTOR;
+                        q /= UNITYSCALEFACTOR;
 
                         Material matReference = importer.defaultMaterial;
 
@@ -245,7 +261,47 @@ namespace LithFAQ
                                 matReference = dtxMaterialList.materials[szTextureName];
                             }
                         }
+  
+                        var possibleTWM = GameObject.Find(tBSP.WorldName + "_obj");
+                        
+                        if(possibleTWM)
+                        {
+                            if (szTextureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+                            var twm = possibleTWM.GetComponent<TranslucentWorldModel>();
+                            if(twm)
+                            {
+                                if (twm.bChromakey || (tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT)
+                                {
+                                    //try to find already existing material
+                                    if (dtxMaterialList.materials.ContainsKey(matReference.name + "_ChromaKey"))
+                                    {
+                                        matReference = dtxMaterialList.materials[matReference.name + "_ChromaKey"];
+                                    }
+                                    else
+                                    {
+                                        //copy material from matReference to a new
+                                        Material mat = new Material(Shader.Find("Shader Graphs/Lithtech Vertex Transparent"));
+                                        mat.name = matReference.name + "_Chromakey";
+                                        mat.mainTexture = matReference.mainTexture;
+                                        mat.SetInt("_Chromakey", 1);
+                                        matReference = mat;
+                                        AddMaterialToMaterialDictionary(mat.name, mat, dtxMaterialList);
+                                    }
+                                }
 
+                                if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE)
+                                {
+                                    mainObject.tag = "Blocker";
+                                }
+                                if(!twm.bVisible)
+                                {
+                                    mainObject.tag = "Blocker";
+                                }
+                            }
+                        }
 
                         // CALCULATE EACH TRI INDIVIDUALLY.
                         for (int nTriIndex = 0; nTriIndex < tPoly.m_nLoVerts - 2; nTriIndex++)
@@ -270,7 +326,7 @@ namespace LithFAQ
 
 
                                 Vector3 data = tVertex.m_vData;
-                                data *= scale;
+                                data *= UNITYSCALEFACTOR;
                                 vertexList.Add(data);
 
                                 Color color = new Color(tPoly.m_aVertexColorList[vCount].red / 255, tPoly.m_aVertexColorList[vCount].green / 255, tPoly.m_aVertexColorList[vCount].blue / 255, 1.0f);
@@ -310,18 +366,25 @@ namespace LithFAQ
                             mf.mesh = m;
 
                             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
+
+                            //yield return null;
                         }
+
+                        // yield return null;
                         id++;
                     }
+
+                    //yield return null;
                 }
-                yield return null;
+                await System.Threading.Tasks.Task.Yield();
+                //yield return null;
             }
 
             //find reflection probe and update it
             var reflectionProbe = GameObject.Find("Main Camera").GetComponent<ReflectionProbe>().RenderProbe();
 
             importer.loadingUI.text = "Combining Meshes";
-            yield return new WaitForEndOfFrame();
+            //yield return new WaitForEndOfFrame();
 
             var g = GameObject.Find("PhysicsBSP");
             Mesh[] meshes = g.GetComponentsInChildren<MeshFilter>().Select(mf => mf.sharedMesh).ToArray();
@@ -363,12 +426,13 @@ namespace LithFAQ
             }
 
             importer.loadingUI.enabled = false;
-            yield return new WaitForEndOfFrame();
+            //yield return new WaitForEndOfFrame();
 
             //Batch all the objects
             StaticBatchingUtility.Combine(toBatch.ToArray(), GameObject.Find("Level"));
 
-            yield return new WaitForEndOfFrame();
+            //yield return new WaitForEndOfFrame();
+            await System.Threading.Tasks.Task.Yield();
         }
 
         private void LoadTexturesForBSP(WorldBsp tBSP)
@@ -394,6 +458,26 @@ namespace LithFAQ
             }
         }
 
+        IEnumerator LoadAndPlay(string uri, AudioSource audioSource)
+        {
+            using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(uri, AudioType.WAV))
+            {
+                yield return www.SendWebRequest();
+
+                if (www.result == UnityWebRequest.Result.ConnectionError || www.result == UnityWebRequest.Result.ProtocolError)
+                {
+                    Debug.LogError("Error: " + www.error);
+                }
+                else
+                {
+                    AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
+                    audioSource.clip = clip;
+                    audioSource.Play();
+                }
+            }
+        }
+
+        
         public void LoadObjects(ref BinaryReader b)
         {
 
@@ -416,7 +500,7 @@ namespace LithFAQ
                     else if (subItem.Key == "Pos")
                     {
                         LTVector temp = (LTVector)subItem.Value;
-                        objectPos = new Vector3(temp.X, temp.Y, temp.Z) * 0.01f;
+                        objectPos = new Vector3(temp.X, temp.Y, temp.Z) * UNITYSCALEFACTOR;
                     }
 
                     else if (subItem.Key == "Rotation")
@@ -433,8 +517,61 @@ namespace LithFAQ
 
                 if (obj.objectName == "GameStartPoint")
                     tempObject.AddComponent<GameStartPointEditor>();
+                
+                if(obj.objectName == "SoundFX")
+                {
+                    AudioSource temp = tempObject.AddComponent<AudioSource>();
+                    var volumeControl = tempObject.AddComponent<Volume2D>();
 
-                if (obj.objectName == "TranslucentWorldModel")
+                    string szFilePath = String.Empty;
+                    
+                    foreach (var subItem in obj.options)
+                    {
+                        
+                        if (subItem.Key == "Sound")
+                        {
+                            szFilePath = importer.projectPath + "\\" + subItem.Value;
+                        }
+
+                        if(subItem.Key == "Loop")
+                        {
+                            temp.loop = (bool)subItem.Value;
+                        }
+                        
+                        if(subItem.Key == "Ambient")
+                        {
+                            if ((bool)subItem.Value)
+                            {
+                                temp.spatialize = false;
+                            }
+                            else
+                            {
+                                temp.spatialize = true;
+                                temp.spatialBlend = 1.0f;
+                                
+                            }
+                        }
+                        
+                        if(subItem.Key == "Volume")
+                        {
+                            float vol = (float)(Int64)subItem.Value;
+                            temp.volume = vol / 100;
+                        }
+                        if(subItem.Key == "OuterRadius")
+                        {
+                            float vol = (float)subItem.Value;
+                            temp.maxDistance = vol / 75;
+
+                            volumeControl.audioSource = temp;
+                            volumeControl.listenerTransform = Camera.main.transform;
+                            volumeControl.maxDist = temp.maxDistance;
+                        }
+                        
+                    }
+                    StartCoroutine(LoadAndPlay(szFilePath, temp));
+                }
+
+                if (obj.objectName == "TranslucentWorldModel" || obj.objectName == "Electricity")
                 {
                     string szObjectName = String.Empty;
                     foreach (var subItem in obj.options)
@@ -721,6 +858,8 @@ namespace LithFAQ
                             b.BaseStream.Position += 2; // skip property flags;
                                                         //Get our data length
                             Int64 longInt = ReadLongInt(ref b);
+                            //b.BaseStream.Position += 4;
+                            //b.BaseStream.Position += 2;
                             //Add our object to the Dictionary
                             tempData.Add(propertyName, longInt);
                             break;

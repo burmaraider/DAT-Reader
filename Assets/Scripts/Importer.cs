@@ -7,9 +7,6 @@ using static LithFAQ.LTUtils;
 using System.IO;
 using SFB;
 using System;
-using UnityEditor.SearchService;
-using System.Linq;
-using System.Runtime.Remoting.Messaging;
 
 public class Importer : MonoBehaviour
 {

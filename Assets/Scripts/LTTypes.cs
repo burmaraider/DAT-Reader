@@ -32,6 +32,9 @@ namespace LithFAQ
             public float I { get; set; }
 
             public bool Equals(LTFloat other) => I == other.I;
+            public override bool Equals(object obj) => obj is LTFloat other && Equals(other);
+            public override int GetHashCode() => I.GetHashCode();
+            
 
             public override string ToString() => $"{I}";
             public static implicit operator float(LTFloat f) => f.I;
@@ -78,7 +81,9 @@ namespace LithFAQ
 
             public static LTVector operator -(LTVector left, LTVector right)
             {
-                left.X -= right.X; left.Y -= right.Y; left.Z -= right.Z; return left;
+                left.X -= right.X; 
+                left.Y -= right.Y; 
+                left.Z -= right.Z;
                 return left;
             }
 

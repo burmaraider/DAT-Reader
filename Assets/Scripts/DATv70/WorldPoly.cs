@@ -155,4 +155,9 @@ public class WorldPoly
             m_aRelDiskVerts[i].nRelVerts = (short)i;
         }
     }
+
+    public WorldSurface GetSurface(WorldBsp pWorldBsp)
+    {
+        return pWorldBsp.m_pSurfaces[m_nSurface];
+    }
 }
