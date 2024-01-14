@@ -1,6 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System.IO;
 using static LithFAQ.LTTypes;
 using static LithFAQ.LTUtils;
@@ -30,8 +28,8 @@ public class WorldTreeNode
             vBBoxMin = a;
             vBBoxMax = b;
 
-            fCenterX = (LTFloat)((LTFloat)(b.X + a.X) * 0.5f);
-            fCenterZ = (LTFloat)((LTFloat)(b.Z + a.Z) * 0.5f);
+            fCenterX = (b.X + a.X) * 0.5f;
+            fCenterZ = (b.Z + a.Z) * 0.5f;
             fSmallestDim = (LTFloat)System.Math.Min(b.X - a.X, b.Z - a.Z);
         }
 

@@ -235,7 +235,16 @@ public static class DTX
             if (mat.name.Contains("_Chromakey"))
             {
                 splitName = mat.name.Split("_Chromakey");
-                mat.mainTexture = dtxMaterial.textures[splitName[0]];
+                try
+                {
+                    mat.mainTexture = dtxMaterial.textures[splitName[0]];
+                }
+                catch (Exception)
+                {
+
+                    return;
+                }
+               
                 mat.SetFloat("_Metallic", 0.9f);
                 mat.SetFloat("_Smoothness", 0.8f);
                 mat.SetColor("_Color", Color.white);

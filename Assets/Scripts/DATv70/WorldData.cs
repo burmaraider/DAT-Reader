@@ -1,9 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using System.IO;
-using static LithFAQ.LTTypes;
-
 public class WorldData
 {
     int m_nFlags;

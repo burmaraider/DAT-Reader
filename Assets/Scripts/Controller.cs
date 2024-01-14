@@ -1,8 +1,6 @@
 using LithFAQ;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 public class Controller : MonoBehaviour
 {
@@ -24,24 +22,9 @@ public class Controller : MonoBehaviour
         }
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-
-    private void LateUpdate()
-    {
-    }
-
-    private void Awake()
-    {
-        
-    }
-
     public void ChangeAmbientLighting(UnityEngine.UI.Slider slider)
     {
-        Color col = GameObject.Find("Level").GetComponent<DATReader70>().importer.defaultColor;
+        Color col = GameObject.Find("Level").GetComponent<Importer>().defaultColor;
         RenderSettings.ambientLight = col *= slider.value;
         RenderSettings.ambientIntensity = slider.value;
     }
