@@ -14,6 +14,7 @@ public class Importer : MonoBehaviour
     public string projectPath = String.Empty;
     public string fileName;
     public uint version;
+    public GameObject RuntimeGizmoPrefab;
 
 
     [SerializeField]

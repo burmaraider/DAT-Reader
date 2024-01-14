@@ -403,6 +403,13 @@ namespace LithFAQ
             //Batch all the objects
             StaticBatchingUtility.Combine(toBatch.ToArray(), GameObject.Find("Level"));
 
+
+            var allRenderProbes = GameObject.FindObjectsOfType<ReflectionProbe>();
+            foreach (var rp in allRenderProbes)
+            {
+                rp.RenderProbe();
+            }
+
             //yield return new WaitForEndOfFrame();
             await System.Threading.Tasks.Task.Yield();
         }
@@ -483,15 +490,23 @@ namespace LithFAQ
 
                 }
 
-                var tempObject = Instantiate(importer.prefab, objectPos, objectRot);
+                var tempObject = Instantiate(importer.RuntimeGizmoPrefab, objectPos, objectRot);
                 tempObject.name = objectName + "_obj";
                 tempObject.transform.eulerAngles = rot;
-
-                if (obj.objectName == "GameStartPoint")
-                    tempObject.AddComponent<GameStartPointEditor>();
+                
+                if(obj.objectName == "WorldProperties")
+                {
+                    //find child gameobject named Icon
+                    var icon = tempObject.transform.Find("Icon");
+                    icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/worldproperties");
+                }
 
                 if (obj.objectName == "SoundFX")
                 {
+                    //find child gameobject named Icon
+                    var icon = tempObject.transform.Find("Icon");
+                    icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/sound");
+
                     AudioSource temp = tempObject.AddComponent<AudioSource>();
                     var volumeControl = tempObject.AddComponent<Volume2D>();
 
@@ -566,7 +581,12 @@ namespace LithFAQ
 
                 if (obj.objectName == "Light")
                 {
+                    //find child gameobject named Icon
+                    var icon = tempObject.transform.Find("Icon");
+                    icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
+                    
                     var light = tempObject.gameObject.AddComponent<Light>();
+
 
                     foreach (var subItem in obj.options)
                     {
@@ -601,6 +621,9 @@ namespace LithFAQ
 
                 if (obj.objectName == "DirLight")
                 {
+                    //find child gameobject named Icon
+                    var icon = tempObject.transform.Find("Icon");
+                    icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
                     var light = tempObject.gameObject.AddComponent<Light>();
 
 
@@ -642,6 +665,9 @@ namespace LithFAQ
 
                 if (obj.objectName == "StaticSunLight")
                 {
+                    //find child gameobject named Icon
+                    var icon = tempObject.transform.Find("Icon");
+                    icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
                     var light = tempObject.gameObject.AddComponent<Light>();
 
                     foreach (var subItem in obj.options)
@@ -673,6 +699,23 @@ namespace LithFAQ
                     }
                 }
 
+                if(obj.objectName == "GameStartPoint")
+                {
+                    var rp = tempObject.AddComponent<ReflectionProbe>();
+
+                    rp.size = new Vector3(15, 15, 15);
+                    rp.blendDistance = 5;
+                    rp.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting;
+                    rp.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
+                    rp.resolution = 256;
+                    rp.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
+
+
+                    //find child gameobject named Icon
+                    var icon = tempObject.transform.Find("Icon");
+                    icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/gsp");
+                }
+
                 var g = GameObject.Find("objects");
                 tempObject.transform.SetParent(g.transform);
                 g.transform.localScale = Vector3.one;
@@ -685,9 +728,9 @@ namespace LithFAQ
                 var t = newGO.AddComponent<UnityEngine.UI.ContentSizeFitter>();
                 t.horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
                 t.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
-                var rtObj = newGO.AddComponent<RuntimeObjectType>();
-                rtObj.cam = Camera.main.transform;
-                rtObj.objectType = tempObject.name;
+                //var rtObj = newGO.AddComponent<RuntimeObjectType>();
+                //rtObj.cam = Camera.main.transform;
+                //rtObj.objectType = tempObject.name;
             }
 
 

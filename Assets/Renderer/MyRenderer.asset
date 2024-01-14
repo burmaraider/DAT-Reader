@@ -1,5 +1,42 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-6664697162977009885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a864f588276bab54f97335821add48a7, type: 3}
+  m_Name: LimSSR
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  Settings:
+    tracingMode: 1
+    stepStrideLength: 0.03
+    maxSteps: 128
+    downSample: 0
+    minSmoothness: 0.5
+    reflectSky: 1
+    ditherType: 1
+    SSR_Instance: {fileID: 0}
+    SSRShader: {fileID: 4800000, guid: 03f5601bba0a8034aa526644e8b9aaeb, type: 3}
+--- !u!114 &-6657090836193419343
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4268db87361095c4ca643764150c94d6, type: 3}
+  m_Name: DepthPyramid
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  depthPyramidShader: {fileID: 7200000, guid: 435cda21c0238ad44afcc94295f9a674, type: 3}
 --- !u!114 &-6268473073326690452
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -35,7 +72,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f62c9c65cf3354c93be831c8bc075510, type: 3}
   m_Name: NewScreenSpaceAmbientOcclusion
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   m_Shader: {fileID: 4800000, guid: 0849e84e3d62649e8882e9d6f056a017, type: 3}
   m_Settings:
     Downsample: 1
@@ -63,7 +100,9 @@ MonoBehaviour:
   m_RendererFeatures:
   - {fileID: -651279836970185604}
   - {fileID: 8244941035617632460}
-  m_RendererFeatureMap: 7c8c045c7030f6f6ccc0073630ea6b72
+  - {fileID: -6657090836193419343}
+  - {fileID: -6664697162977009885}
+  m_RendererFeatureMap: 7c8c045c7030f6f6ccc0073630ea6b72b1df2ebf27439da3239f33c93d3d82a3
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -113,7 +152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43e4edfd5450c9c40a65f8a529b73ff0, type: 3}
   m_Name: ScreenSpaceOutlines
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   renderPassEvent: 250
   outlinesLayerMask:
     serializedVersion: 2
