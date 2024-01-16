@@ -50,7 +50,6 @@ public static class DTX
         public Dictionary<string, string> fileNameAndPath = new Dictionary<string, string>();
         public Dictionary<string, Material> materials = new Dictionary<string, Material>();
         public Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>();
-        
         public Dictionary<string, texSize> texSize = new Dictionary<string, texSize>();
     }
     public struct texSize
@@ -59,7 +58,6 @@ public static class DTX
         public int height;
         public int engineWidth;
         public int engineHeight;
-        public bool bFullBright;
     }
     
     public enum DTXReturn
@@ -121,7 +119,6 @@ public static class DTX
         //do we need to apply fullbright?
         if ((header.m_IFlags & (int)DTXFlags.FULLBRIGHT) != 0)
         {
-            texInfo.bFullBright = true;
             mat.SetInt("_FullBright", 1);
         }
 

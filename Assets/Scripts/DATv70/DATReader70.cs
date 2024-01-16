@@ -11,6 +11,7 @@ using static LithFAQ.LTUtils;
 using static Utility.MaterialSafeMeshCombine;
 using static DTX;
 using TMPro;
+using System.Xml.Linq;
 
 
 
@@ -18,15 +19,14 @@ namespace LithFAQ
 {
     public class DATReader70 : MonoBehaviour, IDATReader
     {
-        [SerializeField]
-        public DTX.DTXMaterial dtxMaterialList = new DTX.DTXMaterial();
-
         public WorldObjects LTGameObjects = new WorldObjects();
         WorldReader worldReader = new WorldReader();
         List<WorldBsp> bspListTest = new List<WorldBsp>();
 
         public float UNITYSCALEFACTOR = 0.01f; //default scale to fit in Unity's world.
         public Importer importer;
+
+        public ABCModelReader abc = new ABCModelReader();
 
         public void Start()
         {
@@ -78,17 +78,17 @@ namespace LithFAQ
             bspListTest = new List<WorldBsp>();
             LTGameObjects = new WorldObjects();
 
-            foreach (Texture2D tex in dtxMaterialList.textures.Values)
+            foreach (Texture2D tex in importer.dtxMaterialList.textures.Values)
             {
                 DestroyImmediate(tex);
             }
-            foreach (Material mat in dtxMaterialList.materials.Values)
+            foreach (Material mat in importer.dtxMaterialList.materials.Values)
             {
                 DestroyImmediate(mat);
             }
 
-            dtxMaterialList = null;
-            dtxMaterialList = new DTX.DTXMaterial();
+            importer.dtxMaterialList = null;
+            importer.dtxMaterialList = new DTX.DTXMaterial();
 
             Resources.UnloadUnusedAssets();
 
@@ -234,11 +234,11 @@ namespace LithFAQ
 
                         Material matReference = importer.defaultMaterial;
 
-                        foreach (var mats in dtxMaterialList.materials.Keys)
+                        foreach (var mats in importer.dtxMaterialList.materials.Keys)
                         {
                             if (mats.Contains(szTextureName))
                             {
-                                matReference = dtxMaterialList.materials[szTextureName];
+                                matReference = importer.dtxMaterialList.materials[szTextureName];
                             }
                         }
 
@@ -246,6 +246,7 @@ namespace LithFAQ
 
                         if (possibleTWM)
                         {
+
                             if (szTextureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
                             {
                                 continue;
@@ -256,9 +257,9 @@ namespace LithFAQ
                                 if (twm.bChromakey || (tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT)
                                 {
                                     //try to find already existing material
-                                    if (dtxMaterialList.materials.ContainsKey(matReference.name + "_Chromakey"))
+                                    if (importer.dtxMaterialList.materials.ContainsKey(matReference.name + "_Chromakey"))
                                     {
-                                        matReference = dtxMaterialList.materials[matReference.name + "_Chromakey"];
+                                        matReference = importer.dtxMaterialList.materials[matReference.name + "_Chromakey"];
                                     }
                                     else
                                     {
@@ -268,7 +269,7 @@ namespace LithFAQ
                                         mat.mainTexture = matReference.mainTexture;
                                         mat.SetInt("_Chromakey", 1);
                                         matReference = mat;
-                                        AddMaterialToMaterialDictionary(mat.name, mat, dtxMaterialList);
+                                        AddMaterialToMaterialDictionary(mat.name, mat, importer.dtxMaterialList);
                                     }
                                 }
 
@@ -280,6 +281,7 @@ namespace LithFAQ
                                 {
                                     mainObject.tag = "Blocker";
                                 }
+                                
                             }
                         }
 
@@ -354,10 +356,21 @@ namespace LithFAQ
 
 
             //find reflection probe and update it
-            var reflectionProbe = GameObject.Find("Main Camera").GetComponent<ReflectionProbe>().RenderProbe();
+            //var reflectionProbe = GameObject.Find("Main Camera").GetComponent<ReflectionProbe>().RenderProbe();
 
             importer.loadingUI.text = "Combining Meshes";
             //yield return new WaitForEndOfFrame();
+
+            //combine all meshes not named PhysicsBSP
+            List<GameObject> twmToBind = new List<GameObject>();
+            foreach (var t in GameObject.Find("Level").gameObject.GetComponentsInChildren<MeshFilter>())
+            {
+                if (t.transform.gameObject.name != "PhysicsBSP")
+                {
+                    t.gameObject.MeshCombine(true);
+                }
+            }
+
 
             var g = GameObject.Find("PhysicsBSP");
             Mesh[] meshes = g.GetComponentsInChildren<MeshFilter>().Select(mf => mf.sharedMesh).ToArray();
@@ -380,6 +393,7 @@ namespace LithFAQ
             {
                 var mc = t.transform.gameObject.AddComponent<MeshCollider>();
                 mc.sharedMesh = t.mesh;
+                //mc.convex = true;
             }
 
             foreach (var t in twmToAdd.gameObject.GetComponentsInChildren<MeshRenderer>())
@@ -402,15 +416,6 @@ namespace LithFAQ
 
             //Batch all the objects
             StaticBatchingUtility.Combine(toBatch.ToArray(), GameObject.Find("Level"));
-
-
-            var allRenderProbes = GameObject.FindObjectsOfType<ReflectionProbe>();
-            foreach (var rp in allRenderProbes)
-            {
-                rp.RenderProbe();
-            }
-
-            //yield return new WaitForEndOfFrame();
             await System.Threading.Tasks.Task.Yield();
         }
 
@@ -419,7 +424,7 @@ namespace LithFAQ
             //Load texture
             foreach (var tex in tBSP.m_aszTextureNames)
             {
-                DTX.LoadDTX(importer.projectPath + "\\" + tex, ref dtxMaterialList, importer.projectPath);
+                DTX.LoadDTX(importer.projectPath + "\\" + tex, ref importer.dtxMaterialList, importer.projectPath);
             }
         }
 
@@ -427,12 +432,12 @@ namespace LithFAQ
         {
             //Lookup the width and height the engine uses to calculate UV's
             //UI Mipmap Offset changes this
-            foreach (var mats in dtxMaterialList.materials.Keys)
+            foreach (var mats in importer.dtxMaterialList.materials.Keys)
             {
                 if (mats.Contains(szTextureName))
                 {
-                    texWidth = dtxMaterialList.texSize[szTextureName].engineWidth;
-                    texHeight = dtxMaterialList.texSize[szTextureName].engineHeight;
+                    texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
+                    texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
                 }
             }
         }
@@ -701,19 +706,84 @@ namespace LithFAQ
 
                 if(obj.objectName == "GameStartPoint")
                 {
-                    var rp = tempObject.AddComponent<ReflectionProbe>();
 
-                    rp.size = new Vector3(15, 15, 15);
-                    rp.blendDistance = 5;
-                    rp.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.ViaScripting;
-                    rp.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
-                    rp.resolution = 256;
-                    rp.timeSlicingMode = UnityEngine.Rendering.ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
+                    int nCount = ModelDefinition.AVP2RandomCharacterGameStartPoint.Length;
 
+                    int nRandom = UnityEngine.Random.Range(0, nCount);
+                    string szName = ModelDefinition.AVP2RandomCharacterGameStartPoint[nRandom];
+
+                    var temp = importer.CreateModelDefinition(szName, ModelType.Character);
+
+                    
+                    var gos = abc.LoadABC(temp);
+
+                    gos.transform.position = tempObject.transform.position;
+                    gos.transform.eulerAngles = rot;
 
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/gsp");
+                }
+
+                if(obj.objectName == "PickupObject")
+                {
+                    string szName = "";
+
+                    if (obj.options.ContainsKey("Pickup"))
+                    {
+                        szName = (string)obj.options["Pickup"];
+                    }
+
+                    //abc.FromFile("Assets/Models/" + szName + ".abc", true);
+
+                    var temp = importer.CreateModelDefinition(szName, ModelType.Pickup);
+
+                    var gos = abc.LoadABC(temp);
+
+                    gos.transform.position = tempObject.transform.position;
+                    gos.transform.eulerAngles = rot;
+
+                    //move to floort with raycast
+                    RaycastHit hit;
+                    if (Physics.Raycast(gos.transform.position, Vector3.down, out hit, 1000))
+                    {
+                        gos.transform.position = hit.point;
+                    }
+
+
+                }
+
+                if(obj.objectName == "Prop" || 
+                    obj.objectName == "AmmoBox" ||
+                    obj.objectName == "Beetle" ||
+                    obj.objectName == "BodyProp" ||
+                    obj.objectName == "Civilian" ||
+                    obj.objectName == "Egg" ||
+                    obj.objectName == "HackableLock" ||
+                    obj.objectName == "Plant" ||
+                    obj.objectName == "StoryObject" ||
+                    obj.objectName == "MEMO" ||
+                    obj.objectName == "PC" ||
+                    obj.objectName == "PDA" ||
+                    obj.objectName == "Striker" ||
+                    obj.objectName == "TorchableLock" ||
+                    obj.objectName == "Turret"
+                    )
+                {
+
+                    string szName = "";
+
+                    if (obj.options.ContainsKey("Name"))
+                    {
+                        szName = (string)obj.options["Name"];
+                    }
+
+                    var temp = importer.CreateModelDefinition(szName, ModelType.Prop, obj.options);
+
+                    var gos = abc.LoadABC(temp);
+
+                    gos.transform.position = tempObject.transform.position;
+                    gos.transform.eulerAngles = rot;
                 }
 
                 var g = GameObject.Find("objects");
@@ -721,13 +791,7 @@ namespace LithFAQ
                 g.transform.localScale = Vector3.one;
 
 
-                var newGO = Instantiate(new GameObject(), tempObject.transform.position, Quaternion.identity);
-                newGO.transform.SetParent(tempObject.transform);
-
-                newGO.AddComponent<TextMeshPro>();
-                var t = newGO.AddComponent<UnityEngine.UI.ContentSizeFitter>();
-                t.horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
-                t.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+                
                 //var rtObj = newGO.AddComponent<RuntimeObjectType>();
                 //rtObj.cam = Camera.main.transform;
                 //rtObj.objectType = tempObject.name;
@@ -735,8 +799,8 @@ namespace LithFAQ
 
 
             //disable unity's nastyness
-            RenderSettings.ambientLight = Color.black;
-            RenderSettings.ambientIntensity = 0.0f;
+            //RenderSettings.ambientLight = Color.black;
+            //RenderSettings.ambientIntensity = 0.0f;
 
             //Setup AmbientLight
             SetupAmbientLight();

@@ -57,3 +57,18 @@ The following packages were updated:
   com.unity.shadergraph from version 10.6.0 to 12.1.10
   com.unity.test-framework from version 1.1.29 to 1.1.31
   com.unity.timeline from version 1.4.8 to 1.6.4
+
+=== Sun Jan 14 12:24:32 2024
+
+Packages were changed.
+Update Mode: updateDependencies
+
+The following packages were added:
+  com.unity.ai.navigation@1.1.5
+The following packages were updated:
+  com.unity.collab-proxy from version 2.0.0 to 2.2.0
+  com.unity.ide.rider from version 3.0.18 to 3.0.27
+  com.unity.render-pipelines.universal from version 12.1.10 to 14.0.9
+  com.unity.shadergraph from version 12.1.10 to 14.0.9
+  com.unity.test-framework from version 1.1.31 to 1.1.33
+  com.unity.timeline from version 1.6.4 to 1.7.6

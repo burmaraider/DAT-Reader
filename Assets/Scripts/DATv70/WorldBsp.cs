@@ -42,7 +42,7 @@ public class WorldBsp
     public int datVersion;
     public int Load(ref BinaryReader b, bool doIt)
     {
-        int dwWorldInfoFlags, dwUnknown, dwUnknown2, dwUnknown3 = 0;
+        int dwUnknown, dwUnknown2, dwUnknown3 = 0;
         Int16 nNameLen = 0;
 
         m_nWorldInfoFlags = (short)b.ReadInt32();
@@ -76,13 +76,8 @@ public class WorldBsp
         m_vWorldTranslation = ReadLTVector(ref b);
 
         m_nNamesLen = b.ReadInt32();
-        m_nTextures = b.ReadInt32(); //66 this is the number of OPQ textures, 70 this is the number of textures
+        m_nTextures = b.ReadInt32();
 
-        //if(datVersion == 66)
-            //m_nSurfaces = m_nTextures; //66 this is the number of OPQ textures, 70 this is the number of textures
-
-
-        //read textures
         ReadTextures(ref b);
         ReadPolies1(ref b);
         ReadLeafs(ref b);

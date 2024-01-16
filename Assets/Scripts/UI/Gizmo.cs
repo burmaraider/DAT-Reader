@@ -43,8 +43,10 @@ public class Gizmo : MonoBehaviour
 
         //shink as we get further away
         float distance = Vector3.Distance(transform.position, Camera.main.transform.position);
-        float scale = 1.0f / distance;
+        float scale = 1.0f / distance * 2;
         transform.localScale = new Vector3(scale, scale, scale);
+
+        transform.localScale = Mathf.Clamp(transform.localScale.x, 0.0f, 0.85f) * Vector3.one;
     }
 }
 

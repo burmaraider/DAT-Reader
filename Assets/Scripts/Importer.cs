@@ -10,6 +10,8 @@ using System;
 
 public class Importer : MonoBehaviour
 {
+    [SerializeField]
+    public DTX.DTXMaterial dtxMaterialList = new DTX.DTXMaterial();
     public Component DatReader;
     public string projectPath = String.Empty;
     public string fileName;
@@ -23,6 +25,8 @@ public class Importer : MonoBehaviour
     public UnityEngine.UI.Text infoBox;
     public UnityEngine.UI.Text loadingUI;
     public GameObject prefab;
+
+    public Dictionary<ModelType, INIParser> configButes = new Dictionary<ModelType, INIParser>();
 
     public void OpenDAT()
     {
@@ -105,6 +109,172 @@ public class Importer : MonoBehaviour
         uint version = binaryReader.ReadUInt32();
         binaryReader.BaseStream.Position = 0; //reset back to start of the file so that our DAT reader can read it
         return version;
+    }
+
+    
+    public ModelDefinition CreateModelDefinition(string szName, ModelType type, Dictionary<string, object> objectInfo = null)
+    {
+        //Bail out!
+        if (type == ModelType.None)
+            return null;
+        
+        ModelDefinition modelDefinition = new ModelDefinition();
+        INIParser ini = new INIParser();
+
+
+        if (type == ModelType.Character)
+        {
+            modelDefinition.modelType = type;
+            if (!configButes.ContainsKey(type))
+            {
+                ini.Open(projectPath + "\\Attributes\\CharacterButes.txt");
+                configButes.Add(type, ini); //stuff this away
+            }
+            
+            var item = configButes[type].GetSectionsByName(szName);
+
+            if (item == null)
+                return null;
+
+            foreach (var key in item)
+            {
+
+                if (key.Key == "DefaultModel")
+                {
+                    modelDefinition.szModelFileName = key.Value.Replace("\"", "");
+                }
+                if (key.Key == "DefaultSkin0")
+                {
+                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Replace("\"", ""));
+                }
+                if (key.Key == "DefaultSkin1")
+                {
+                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Replace("\"", ""));
+                }
+                if (key.Key == "DefaultSkin2")
+                {
+                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Replace("\"", ""));
+                }
+                if (key.Key == "DefaultSkin3")
+                {
+                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Replace("\"", ""));
+                }
+            }
+
+            modelDefinition.szModelFilePath = projectPath + "\\Models\\Characters\\" + modelDefinition.szModelFileName;
+            modelDefinition.FitTextureList();
+
+            return modelDefinition;
+        }
+        
+
+        if (type == ModelType.Pickup)
+        {
+            modelDefinition.modelType = type;
+            if (!configButes.ContainsKey(type))
+            {
+                ini.Open(projectPath + "\\Attributes\\PickupButes.txt");
+                configButes.Add(type, ini); //stuff this away
+            }
+
+            foreach (var sections in configButes[type].GetSections)
+            {
+
+                var test = sections.Value;
+
+                // check if keys has a name
+                if (sections.Value.ContainsKey("Name"))
+                {
+                    if (sections.Value["Name"].Replace("\"", "") != szName)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        string modelName = configButes[type].ReadValue(sections.Key, "Model", "1x1square.abc");
+
+                        if(!String.IsNullOrEmpty(modelName))
+                        {
+                            modelDefinition.szModelFileName = modelName.Replace("\"", "");
+                            modelDefinition.szModelFilePath = projectPath + "\\" + modelName.Replace("\"", "");
+                        }
+
+                        //get skins, could be up to 4, but not always defined.. FUN
+
+                        for (int i = 0; i < 4; i++)
+                        {
+                            string szSkinString = String.Format("Skin{0}", i);
+
+                            modelDefinition.szModelTextureName.Add(configButes[type].ReadValue(sections.Key, szSkinString, "").Replace("\"", String.Empty));
+                            
+                        }
+                        modelDefinition.FitTextureList();
+
+                    }
+                    return modelDefinition;
+                }
+
+            }
+
+            /*
+            var item = ini.GetSectionsByName("Tamiko");
+
+            foreach (var key in item)
+            {
+
+                if (key.Key == "DefaultModel")
+                {
+                    modelDefinition.szModelFileName = key.Value.Replace("\"", "");
+                }
+                if (key.Key == "DefaultSkin0")
+                {
+                    modelDefinition.szModelTextureName.Add(key.Value.Replace("\"", ""));
+                }
+                if (key.Key == "DefaultSkin1")
+                {
+                    modelDefinition.szModelTextureName.Add(key.Value.Replace("\"", ""));
+                }
+                if (key.Key == "DefaultSkin2")
+                {
+                    modelDefinition.szModelTextureName.Add(key.Value.Replace("\"", ""));
+                }
+                if (key.Key == "DefaultSkin3")
+                {
+                    modelDefinition.szModelTextureName.Add(key.Value.Replace("\"", ""));
+                }
+            }
+
+            modelDefinition.szModelFilePath = projectPath + "\\Models\\Characters\\" + modelDefinition.szModelFileName + ".abc";
+            modelDefinition.FitTextureList();
+            */
+
+        }
+
+        if (type == ModelType.Prop)
+        {
+            modelDefinition.modelType = type;
+
+            //find the key "Filename" in the dictionary
+            string szFilename = (string)objectInfo["Filename"];
+            string szSkins = (string)objectInfo["Skin"];
+
+            string[] szSkinArray = szSkins.Split(';');
+
+            foreach (var szSkin in szSkinArray)
+            {
+                modelDefinition.szModelTextureName.Add(szSkin);
+            }
+
+            modelDefinition.szModelFileName = szFilename;
+            modelDefinition.szModelFilePath = projectPath + "\\" + modelDefinition.szModelFileName;
+
+            return modelDefinition;
+
+        }
+
+
+
+            return null;
     }
 
     public void Quit()
