@@ -121,6 +121,22 @@ public class Importer : MonoBehaviour
         ModelDefinition modelDefinition = new ModelDefinition();
         INIParser ini = new INIParser();
 
+        if (objectInfo != null)
+        {
+            if (objectInfo.ContainsKey("MoveToFloor"))
+            {
+                modelDefinition.bMoveToFloor = (bool)objectInfo["MoveToFloor"];
+            }
+            if (objectInfo.ContainsKey("ForceNoMoveToGround"))
+            {
+                modelDefinition.bMoveToFloor = !(bool)objectInfo["ForceNoMoveToGround"];
+            }
+            if(objectInfo.ContainsKey("HumanOnly"))
+            {
+                modelDefinition.bMoveToFloor = true;
+            }
+            
+        }
 
         if (type == ModelType.Character)
         {
@@ -131,7 +147,18 @@ public class Importer : MonoBehaviour
                 configButes.Add(type, ini); //stuff this away
             }
             
-            var item = configButes[type].GetSectionsByName(szName);
+
+            Dictionary<string, string> item = null;
+
+            if (type == ModelType.BodyProp)
+            {
+                if(objectInfo.ContainsKey("CharacterType"))
+                {
+                    szName = (string)objectInfo["CharacterType"];
+                }
+            }
+
+            item = configButes[type].GetSectionsByName(szName);
 
             if (item == null)
                 return null;
@@ -268,10 +295,16 @@ public class Importer : MonoBehaviour
             modelDefinition.szModelFileName = szFilename;
             modelDefinition.szModelFilePath = projectPath + "\\" + modelDefinition.szModelFileName;
 
+            if(objectInfo.ContainsKey("Chromakey"))
+            {
+                modelDefinition.bChromakey = (bool)objectInfo["Chromakey"];
+            }
+
             return modelDefinition;
 
         }
 
+        
 
 
             return null;

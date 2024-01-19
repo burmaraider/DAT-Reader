@@ -2,7 +2,9 @@ using SFB;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Unity.Mathematics;
 using UnityEngine;
+using Utility;
 using static ABCModelReader;
 
 public class ABCModelReader : MonoBehaviour
@@ -27,7 +29,7 @@ public class ABCModelReader : MonoBehaviour
 
     private Vector3 ReadVector3(BinaryReader reader)
     {
-        return new UnityEngine.Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+        return new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
     }
 
 
@@ -119,101 +121,7 @@ public class ABCModelReader : MonoBehaviour
         }
         return piece;
     }
-
-    public void FromFileUI()
-    {
-        FromFile("", ModelType.Character);
-    }
-    public void FromFile(string path, ModelType type = ModelType.None)
-    {
-        var extensions = new[] {
-                new ExtensionFilter("Lithtech Model ABC", "abc" )
-            };
-
-        // Open file
-        var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, false);
-
-        if (paths.Length <= 0)
-            return;
-
-            Model model = new Model();
-        model.Name = Path.GetFileNameWithoutExtension(paths[0]);
-        using (BinaryReader reader = new BinaryReader(File.OpenRead(paths[0])))
-        {
-            int nextSectionOffset = 0;
-            while (nextSectionOffset != -1)
-            {
-                reader.BaseStream.Seek(nextSectionOffset, SeekOrigin.Begin);
-                string sectionName = ReadString(reader);
-                nextSectionOffset = reader.ReadInt32();
-                if (sectionName == "Header")
-                {
-                    nVersion = reader.ReadInt32();
-                    if (nVersion < 9 || nVersion > 13)
-                    {
-                        throw new Exception($"Unsupported file version ({nVersion}).");
-                    }
-                    model.Version = nVersion;
-                    reader.BaseStream.Seek(8, SeekOrigin.Current);
-                    nNodeCount = reader.ReadInt32();
-                    reader.BaseStream.Seek(20, SeekOrigin.Current);
-                    nLODCount = reader.ReadInt32();
-                    reader.BaseStream.Seek(4, SeekOrigin.Current);
-                    nWeightSetCount = reader.ReadInt32();
-                    reader.BaseStream.Seek(8, SeekOrigin.Current);
-
-                    // Unknown new value
-                    if (nVersion >= 13)
-                    {
-                        reader.BaseStream.Seek(4, SeekOrigin.Current);
-                    }
-
-                    model.CommandString = ReadString(reader);
-                    model.InternalRadius = reader.ReadSingle();
-                    reader.BaseStream.Seek(64, SeekOrigin.Current);
-                    model.LODDistances = new List<float>();
-                    for (int i = 0; i < nLODCount; i++)
-                    {
-                        model.LODDistances.Add(reader.ReadSingle());
-                    }
-                }
-                else if (sectionName == "Pieces")
-                {
-                    int weightCount = reader.ReadInt32();
-                    int piecesCount = reader.ReadInt32();
-                    model.Pieces = new List<Piece>();
-                    for (int i = 0; i < piecesCount; i++)
-                    {
-                        model.Pieces.Add(ReadPiece(reader));
-                    }
-                }
-            }
-        }
-        this.model = model;
-        /*
-        //ModelDefinition modelDefinition = importer.CreateModelDefinition(model.Name, ModelType.Pickup);
-        modelDefinition.model = model;
-
-        modelDefinition.rootObject = new GameObject(model.Name);
-        modelDefinition.rootObject.transform.position = Vector3.zero;
-        modelDefinition.rootObject.transform.rotation = Quaternion.identity;
-        modelDefinition.rootObject.transform.localScale = Vector3.one;
-        
-        foreach (var m in model.Pieces)
-        {      
-            GameObject modelInGameObject = new GameObject(m.Name);
-            modelInGameObject.transform.parent = modelDefinition.rootObject.transform;
-            modelInGameObject.AddComponent<MeshFilter>();
-            modelInGameObject.AddComponent<MeshRenderer>();
-            modelInGameObject.GetComponent<MeshFilter>().mesh = CreateMesh(m);
-            modelInGameObject.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Shader Graphs/Lithtech Vertex"));
-            modelInGameObject.GetComponent<MeshRenderer>().material.color = Color.gray;
-            var mc = modelInGameObject.AddComponent<MeshCollider>();
-            mc.sharedMesh = modelInGameObject.GetComponent<MeshFilter>().mesh;
-        }
-        */
-    }
-
+   
     public GameObject LoadABC(ModelDefinition mDef)
     {
         
@@ -278,13 +186,13 @@ public class ABCModelReader : MonoBehaviour
         {
             importer = GameObject.FindObjectOfType<Importer>();
         }
+
         //load dtx textures
         foreach (var tex in mDef.szModelTextureName)
         {
             DTX.LoadDTX(importer.projectPath + "\\" + tex, ref importer.dtxMaterialList, importer.projectPath);
         }
 
-        //ModelDefinition modelDefinition = importer.CreateModelDefinition(model.Name, ModelType.Pickup);
         mDef.model = model;
 
         mDef.rootObject = new GameObject(model.Name);
@@ -299,11 +207,36 @@ public class ABCModelReader : MonoBehaviour
             modelInGameObject.AddComponent<MeshFilter>();
             modelInGameObject.AddComponent<MeshRenderer>();
             modelInGameObject.GetComponent<MeshFilter>().mesh = CreateMesh(m, mDef.modelType);
+
+            modelInGameObject.GetComponent<MeshFilter>().mesh.RecalculateBounds();
+
+            //Sometimes people don't specify a second, third or fourth texture... so we need to check if the index is out of bounds
+            if (m.MaterialIndex > mDef.szModelTextureName.Count - 1)
+                m.MaterialIndex = (ushort)(mDef.szModelTextureName.Count - 1);
+
             modelInGameObject.GetComponent<MeshRenderer>().material = importer.dtxMaterialList.materials[Path.GetFileName(mDef.szModelTextureName[m.MaterialIndex])];
-            var mc = modelInGameObject.AddComponent<MeshCollider>();
-            //use box as mesh collider
+            
+            if(mDef.bChromakey)
+            {
+                var mr = modelInGameObject.GetComponent<MeshRenderer>();
+                mr.material.shader = Shader.Find("Shader Graphs/Lithtech Vertex Transparent");
+                mr.material.SetInt("_Chromakey", 1);
+
+            }
         }
+
+        //combine
+        mDef.rootObject.MeshCombine(true);
+
+        mDef.rootObject.tag = "NoRayCast";
+
+        if (mDef.bMoveToFloor || mDef.modelType == ModelType.Pickup || mDef.modelType == ModelType.Character || mDef.modelType == ModelType.Weapon)
+            mDef.rootObject.AddComponent<DebugLines>();
+
         
+
+        mDef.rootObject.transform.SetParent(GameObject.Find("Models").transform);
+
         return mDef.rootObject;
     }
 
@@ -312,7 +245,6 @@ public class ABCModelReader : MonoBehaviour
     {
         List<Mesh> individualMeshes = new List<Mesh>();
 
-        // Assuming Piece has Vertices and LODs
         // only use the first LOD, we don't care about the rest.
         //foreach (LOD lod in piece.LODs)
         //{

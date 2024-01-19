@@ -1,28 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-4935872018641670660
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a864f588276bab54f97335821add48a7, type: 3}
-  m_Name: LimSSR
-  m_EditorClassIdentifier: 
-  m_Active: 1
-  Settings:
-    tracingMode: 0
-    stepStrideLength: 0.03
-    maxSteps: 128
-    downSample: 0
-    minSmoothness: 0.6
-    reflectSky: 1
-    ditherType: 1
-    SSR_Instance: {fileID: 0}
-    SSRShader: {fileID: 4800000, guid: 03f5601bba0a8034aa526644e8b9aaeb, type: 3}
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -33,18 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: de640fe3d0db1804a85f9fc8f5cadab6, type: 3}
-  m_Name: KeepDeferredShaderVariants
+  m_Name: SkyBox
   m_EditorClassIdentifier: 
   debugShaders:
     debugReplacementPS: {fileID: 4800000, guid: cf852408f2e174538bcd9b7fda1c5ae7, type: 3}
     hdrDebugViewPS: {fileID: 4800000, guid: 573620ae32aec764abd4d728906d2587, type: 3}
-  m_RendererFeatures:
-  - {fileID: -4935872018641670660}
-  - {fileID: 1109958177279149800}
-  - {fileID: 6208792573336645933}
-  m_RendererFeatureMap: fcad12e88c4280bbe88643d8145d670f2d71d029f30f2a56
+  m_RendererFeatures: []
+  m_RendererFeatureMap: 
   m_UseNativeRenderPass: 0
-  postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
+  postProcessData: {fileID: 0}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
   shaders:
     blitPS: {fileID: 4800000, guid: c17132b1f77d20942aa75f8429c0f8bc, type: 3}
@@ -69,53 +43,18 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   m_DefaultStencilState:
-    overrideStencilState: 0
+    overrideStencilState: 1
     stencilReference: 0
     stencilCompareFunction: 0
     passOperation: 0
     failOperation: 0
     zFailOperation: 0
-  m_ShadowTransparentReceive: 1
+  m_ShadowTransparentReceive: 0
   m_RenderingMode: 1
   m_DepthPrimingMode: 0
   m_CopyDepthMode: 0
   m_AccurateGbufferNormals: 0
-  m_IntermediateTextureMode: 1
---- !u!114 &1109958177279149800
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f62c9c65cf3354c93be831c8bc075510, type: 3}
-  m_Name: ScreenSpaceAmbientOcclusion
-  m_EditorClassIdentifier: 
-  m_Active: 1
-  m_Settings:
-    AOMethod: 0
-    Downsample: 1
-    AfterOpaque: 0
-    Source: 1
-    NormalSamples: 1
-    Intensity: 0.87
-    DirectLightingStrength: 1
-    Radius: 0.6
-    Samples: 1
-    BlurQuality: 1
-    Falloff: 9.99
-    SampleCount: -1
-  m_BlueNoise256Textures:
-  - {fileID: 2800000, guid: 36f118343fc974119bee3d09e2111500, type: 3}
-  - {fileID: 2800000, guid: 4b7b083e6b6734e8bb2838b0b50a0bc8, type: 3}
-  - {fileID: 2800000, guid: c06cc21c692f94f5fb5206247191eeee, type: 3}
-  - {fileID: 2800000, guid: cb76dd40fa7654f9587f6a344f125c9a, type: 3}
-  - {fileID: 2800000, guid: e32226222ff144b24bf3a5a451de54bc, type: 3}
-  - {fileID: 2800000, guid: 3302065f671a8450b82c9ddf07426f3a, type: 3}
-  - {fileID: 2800000, guid: 56a77a3e8d64f47b6afe9e3c95cb57d5, type: 3}
-  m_Shader: {fileID: 4800000, guid: 0849e84e3d62649e8882e9d6f056a017, type: 3}
+  m_IntermediateTextureMode: 0
 --- !u!114 &2016939465574326154
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -135,17 +74,3 @@ MonoBehaviour:
   mipmapsMode: 1
   sceneView: 0
   isLogPrinted: 0
---- !u!114 &6208792573336645933
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e32e72b6a3f58a24c9033e2b9275eea0, type: 3}
-  m_Name: ScreenSpaceShadows
-  m_EditorClassIdentifier: 
-  m_Active: 0
-  m_Shader: {fileID: 4800000, guid: 0f854b35a0cf61a429bd5dcfea30eddd, type: 3}

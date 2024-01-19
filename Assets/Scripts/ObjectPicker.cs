@@ -80,7 +80,7 @@ public class ObjectPicker : MonoBehaviour
                 t.gameObject.SetActive(b);
     }
 
-    public void ToggleShadows(System.Boolean b)
+    public void ToggleShadows(bool b)
     {
         var levelGameObject = GameObject.Find("objects");
 

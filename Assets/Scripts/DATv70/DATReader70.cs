@@ -26,12 +26,14 @@ namespace LithFAQ
         public float UNITYSCALEFACTOR = 0.01f; //default scale to fit in Unity's world.
         public Importer importer;
 
-        public ABCModelReader abc = new ABCModelReader();
+        public ABCModelReader abc;
 
         public void Start()
         {
             importer = GetComponent<Importer>();
             gameObject.AddComponent<Dispatcher>();
+
+            abc = gameObject.AddComponent<ABCModelReader>();
         }
 
         public void ClearLevel()
@@ -60,19 +62,18 @@ namespace LithFAQ
                 Destroy(child.gameObject);
             }
 
-            //find all objects named New Game Object
-            GameObject[] newGameObjects = GameObject.FindObjectsOfType<GameObject>();
+            go = GameObject.Find("Models");
 
-            //TODO: FIX THE ISSUE WHERE NEW GAMES OBJECTS ARE BEING CREATED IN ROOT OF SCENE.
-            // List or use the found objects
-            foreach (var obj in newGameObjects)
+            foreach (Transform child in go.transform)
             {
-                if (obj.name == "New Game Object")
+                foreach (MeshFilter meshFilter in child.GetComponentsInChildren<MeshFilter>())
                 {
-                    // Do something with the object
-                    Destroy(obj);
+                    DestroyImmediate(meshFilter.sharedMesh);
                 }
+                
+                Destroy(child.gameObject);
             }
+
 
             worldReader = new WorldReader();
             bspListTest = new List<WorldBsp>();
@@ -187,12 +188,15 @@ namespace LithFAQ
                     mainObject.AddComponent<MeshFilter>();
                     mainObject.AddComponent<MeshRenderer>().material = importer.defaultMaterial;
 
-                    if (tBSP.m_aszTextureNames[0].Contains("AI.dtx") ||
-                        tBSP.m_szWorldName.Contains("Volume") ||
-                        tBSP.m_szWorldName.Contains("Water") ||
-                        tBSP.m_szWorldName.Contains("weather") ||
-                        tBSP.m_szWorldName.Contains("Weather") ||
-                        tBSP.m_szWorldName.Contains("Ladder"))
+                    if (tBSP.m_aszTextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
+                        tBSP.m_szWorldName.Contains("volume", StringComparison.OrdinalIgnoreCase) ||
+                        tBSP.m_szWorldName.Contains("Wwater") ||
+                        tBSP.m_szWorldName.Contains("weather", StringComparison.OrdinalIgnoreCase) ||
+                        tBSP.m_szWorldName.Contains("rain", StringComparison.OrdinalIgnoreCase) && !tBSP.m_szWorldName.Contains("terrain", StringComparison.OrdinalIgnoreCase) ||
+                        tBSP.m_szWorldName.Contains("poison", StringComparison.OrdinalIgnoreCase)||
+                        tBSP.m_szWorldName.Contains("corrosive", StringComparison.OrdinalIgnoreCase) ||
+                        tBSP.m_szWorldName.Contains("ladder", StringComparison.OrdinalIgnoreCase)
+                        )
                     {
                         mainObject.tag = "Volumes";
                     }
@@ -202,7 +206,11 @@ namespace LithFAQ
                     foreach (WorldPoly tPoly in tBSP.m_pPolies)
                     {
                         //remove all bsp invisible
-                        if (tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Invisible", StringComparison.OrdinalIgnoreCase))
+                        if (tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Invisible.dtx", StringComparison.OrdinalIgnoreCase) ||
+                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Sky.dtx", StringComparison.OrdinalIgnoreCase) ||
+                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Rain.dtx", StringComparison.OrdinalIgnoreCase) ||
+                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("hull.dtx", StringComparison.OrdinalIgnoreCase) ||
+                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("occluder.dtx", StringComparison.OrdinalIgnoreCase))
                         {
                             continue;
                         }
@@ -354,15 +362,9 @@ namespace LithFAQ
                 }
             }
 
-
-            //find reflection probe and update it
-            //var reflectionProbe = GameObject.Find("Main Camera").GetComponent<ReflectionProbe>().RenderProbe();
-
             importer.loadingUI.text = "Combining Meshes";
-            //yield return new WaitForEndOfFrame();
 
             //combine all meshes not named PhysicsBSP
-            List<GameObject> twmToBind = new List<GameObject>();
             foreach (var t in GameObject.Find("Level").gameObject.GetComponentsInChildren<MeshFilter>())
             {
                 if (t.transform.gameObject.name != "PhysicsBSP")
@@ -372,39 +374,36 @@ namespace LithFAQ
             }
 
 
-            var g = GameObject.Find("PhysicsBSP");
-            Mesh[] meshes = g.GetComponentsInChildren<MeshFilter>().Select(mf => mf.sharedMesh).ToArray();
-
-            g.MeshCombine(true);
+            var gPhysicsBSP = GameObject.Find("PhysicsBSP");
+            gPhysicsBSP.MeshCombine(true);
 
             //after mesh combine, we need to recalculate the normals
-            MeshFilter[] meshFilters = g.GetComponentsInChildren<MeshFilter>();
+            MeshFilter[] meshFilters = gPhysicsBSP.GetComponentsInChildren<MeshFilter>();
             foreach (MeshFilter mf in meshFilters)
             {
-
-                mf.mesh.Optimize();
+                //mf.mesh.Optimize();
                 mf.mesh.RecalculateNormals();
                 mf.mesh.RecalculateTangents();
             }
 
-
-            var twmToAdd = GameObject.Find("Level");
-            foreach (var t in twmToAdd.gameObject.GetComponentsInChildren<MeshFilter>())
+            //Assign the mesh collider to the combined meshes
+            var gLevelRoot = GameObject.Find("Level");
+            foreach (var t in gLevelRoot.gameObject.GetComponentsInChildren<MeshFilter>())
             {
                 var mc = t.transform.gameObject.AddComponent<MeshCollider>();
                 mc.sharedMesh = t.mesh;
-                //mc.convex = true;
             }
 
-            foreach (var t in twmToAdd.gameObject.GetComponentsInChildren<MeshRenderer>())
+            //Clip light from behind walls
+            foreach (var t in gLevelRoot.gameObject.GetComponentsInChildren<MeshRenderer>())
             {
                 t.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
             }
 
-            //Loop through all objects under Level and add MeshFilter to a list
+            //Loop through all objects under Level and add MeshFilter to a list so we can batch
             List<GameObject> toBatch = new List<GameObject>();
 
-            foreach (Transform child in GameObject.Find("Level").transform)
+            foreach (Transform child in gLevelRoot.transform)
             {
                 if (child.gameObject.GetComponent<MeshFilter>() != null)
                 {
@@ -415,7 +414,7 @@ namespace LithFAQ
             importer.loadingUI.enabled = false;
 
             //Batch all the objects
-            StaticBatchingUtility.Combine(toBatch.ToArray(), GameObject.Find("Level"));
+            StaticBatchingUtility.Combine(toBatch.ToArray(), gLevelRoot);
             await System.Threading.Tasks.Task.Yield();
         }
 
@@ -444,6 +443,7 @@ namespace LithFAQ
 
         IEnumerator LoadAndPlay(string uri, AudioSource audioSource)
         {
+            bool bIsNotWAV = false;
             using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(uri, AudioType.WAV))
             {
                 yield return www.SendWebRequest();
@@ -454,9 +454,41 @@ namespace LithFAQ
                 }
                 else
                 {
-                    AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
-                    audioSource.clip = clip;
-                    audioSource.Play();
+                    if (www.downloadHandler.data[20] == 1)
+                    {
+                        AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
+                        audioSource.clip = clip;
+                        audioSource.Play();
+                    }
+                    else
+                    {
+                        bIsNotWAV = true;
+                    }
+                }
+            }
+            if (bIsNotWAV)
+            {
+                using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(uri, AudioType.MPEG))
+                {
+                    yield return www.SendWebRequest();
+
+                    if (www.result == UnityWebRequest.Result.ConnectionError || www.result == UnityWebRequest.Result.ProtocolError)
+                    {
+                        Debug.LogError("Error: " + www.error);
+                    }
+                    else
+                    {
+                        if (www.downloadHandler.data[20] == 85)
+                        {
+                            AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
+                            audioSource.clip = clip;
+                            audioSource.Play();
+                        }
+                        else
+                        {
+                            bIsNotWAV = true;
+                        }
+                    }
                 }
             }
         }
@@ -504,6 +536,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/worldproperties");
+                    icon.gameObject.tag = "NoRayCast";
                 }
 
                 if (obj.objectName == "SoundFX")
@@ -511,6 +544,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/sound");
+                    icon.gameObject.tag = "NoRayCast";
 
                     AudioSource temp = tempObject.AddComponent<AudioSource>();
                     var volumeControl = tempObject.AddComponent<Volume2D>();
@@ -563,7 +597,7 @@ namespace LithFAQ
                     StartCoroutine(LoadAndPlay(szFilePath, temp));
                 }
 
-                if (obj.objectName == "TranslucentWorldModel" || obj.objectName == "Electricity")
+                if (obj.objectName == "TranslucentWorldModel" || obj.objectName == "Electricity" || obj.objectName == "Door")
                 {
                     string szObjectName = String.Empty;
                     foreach (var subItem in obj.options)
@@ -589,7 +623,8 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
-                    
+                    icon.gameObject.tag = "NoRayCast";
+
                     var light = tempObject.gameObject.AddComponent<Light>();
 
 
@@ -629,6 +664,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
+                    icon.gameObject.tag = "NoRayCast";
                     var light = tempObject.gameObject.AddComponent<Light>();
 
 
@@ -673,6 +709,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
+                    icon.gameObject.tag = "NoRayCast";
                     var light = tempObject.gameObject.AddComponent<Light>();
 
                     foreach (var subItem in obj.options)
@@ -712,7 +749,7 @@ namespace LithFAQ
                     int nRandom = UnityEngine.Random.Range(0, nCount);
                     string szName = ModelDefinition.AVP2RandomCharacterGameStartPoint[nRandom];
 
-                    var temp = importer.CreateModelDefinition(szName, ModelType.Character);
+                    var temp = importer.CreateModelDefinition(szName, ModelType.Character, obj.options);
 
                     
                     var gos = abc.LoadABC(temp);
@@ -723,6 +760,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/gsp");
+                    icon.gameObject.tag = "NoRayCast";
                 }
 
                 if(obj.objectName == "PickupObject")
@@ -736,7 +774,7 @@ namespace LithFAQ
 
                     //abc.FromFile("Assets/Models/" + szName + ".abc", true);
 
-                    var temp = importer.CreateModelDefinition(szName, ModelType.Pickup);
+                    var temp = importer.CreateModelDefinition(szName, ModelType.Pickup, obj.options);
 
                     var gos = abc.LoadABC(temp);
 
@@ -756,7 +794,7 @@ namespace LithFAQ
                 if(obj.objectName == "Prop" || 
                     obj.objectName == "AmmoBox" ||
                     obj.objectName == "Beetle" ||
-                    obj.objectName == "BodyProp" ||
+                    //obj.objectName == "BodyProp" || // not implemented
                     obj.objectName == "Civilian" ||
                     obj.objectName == "Egg" ||
                     obj.objectName == "HackableLock" ||
@@ -778,6 +816,7 @@ namespace LithFAQ
                         szName = (string)obj.options["Name"];
                     }
 
+
                     var temp = importer.CreateModelDefinition(szName, ModelType.Prop, obj.options);
 
                     var gos = abc.LoadABC(temp);
@@ -785,6 +824,7 @@ namespace LithFAQ
                     gos.transform.position = tempObject.transform.position;
                     gos.transform.eulerAngles = rot;
                 }
+
 
                 var g = GameObject.Find("objects");
                 tempObject.transform.SetParent(g.transform);

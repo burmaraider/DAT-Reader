@@ -7,6 +7,7 @@ TagManager:
   - GameStartPoint
   - Blocker
   - Volumes
+  - NoRayCast
   layers:
   - Default
   - TransparentFX
