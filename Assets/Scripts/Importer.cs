@@ -102,6 +102,9 @@ public class Importer : MonoBehaviour
         Destroy(DatReader);
         DatReader = null;
         Resources.UnloadUnusedAssets();
+
+        //reset gui
+        GameObject.FindAnyObjectByType<MainGui>().Reset();
     }
     
     private uint ReadDATVersion(ref BinaryReader binaryReader)

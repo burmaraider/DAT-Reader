@@ -7,6 +7,15 @@
       "dependencies": {},
       "hash": "353c5a037936bd747d82ba233781ff695fdac9c7"
     },
+    "com.realgames.dear-imgui": {
+      "version": "https://github.com/mattmanj17/dear-imgui-unity.git#matthewd",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.collections": "0.5.0-preview.9"
+      },
+      "hash": "101996d5fced0e6601279e89cb753c474343e8aa"
+    },
     "com.unity.ai.navigation": {
       "version": "1.1.5",
       "depth": 0,
@@ -30,6 +39,16 @@
       "depth": 0,
       "source": "registry",
       "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.collections": {
+      "version": "1.2.4",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.burst": "1.6.6",
+        "com.unity.test-framework": "1.1.31"
+      },
       "url": "https://packages.unity.com"
     },
     "com.unity.ext.nunit": {

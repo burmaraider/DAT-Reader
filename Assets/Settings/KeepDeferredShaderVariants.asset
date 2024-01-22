@@ -1,5 +1,19 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7275450097375682190
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 634e04a41f64dd442bc08c0d6f8c90e6, type: 3}
+  m_Name: RenderImGuiFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  renderPassEvent: 600
 --- !u!114 &-4935872018641670660
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -42,7 +56,8 @@ MonoBehaviour:
   - {fileID: -4935872018641670660}
   - {fileID: 1109958177279149800}
   - {fileID: 6208792573336645933}
-  m_RendererFeatureMap: fcad12e88c4280bbe88643d8145d670f2d71d029f30f2a56
+  - {fileID: -7275450097375682190}
+  m_RendererFeatureMap: fcad12e88c4280bbe88643d8145d670f2d71d029f30f2a567261d7f4ae68089b
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -93,7 +108,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f62c9c65cf3354c93be831c8bc075510, type: 3}
   m_Name: ScreenSpaceAmbientOcclusion
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   m_Settings:
     AOMethod: 0
     Downsample: 1

@@ -127,6 +127,17 @@ public class ABCModelReader : MonoBehaviour
         
         Model model = new Model();
         model.Name = Path.GetFileNameWithoutExtension(mDef.szModelFilePath);
+
+        if (mDef.szModelFilePath == null)
+        {
+            throw new Exception("No file selected");
+        }
+
+        if (!File.Exists(mDef.szModelFilePath))
+        {
+            return null;
+        }
+
         using (BinaryReader reader = new BinaryReader(File.OpenRead(mDef.szModelFilePath)))
         {
             int nextSectionOffset = 0;

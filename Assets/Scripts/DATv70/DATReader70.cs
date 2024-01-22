@@ -777,6 +777,11 @@ namespace LithFAQ
                     var temp = importer.CreateModelDefinition(szName, ModelType.Pickup, obj.options);
 
                     var gos = abc.LoadABC(temp);
+                    if (gos == null)
+                    {
+                        Debug.Log("Failed to load " + szName);
+                        continue;
+                    }
 
                     gos.transform.position = tempObject.transform.position;
                     gos.transform.eulerAngles = rot;
@@ -820,6 +825,12 @@ namespace LithFAQ
                     var temp = importer.CreateModelDefinition(szName, ModelType.Prop, obj.options);
 
                     var gos = abc.LoadABC(temp);
+                    
+                    if (gos == null)
+                    {
+                        Debug.Log("Failed to load " + szName);
+                        continue;
+                    }
 
                     gos.transform.position = tempObject.transform.position;
                     gos.transform.eulerAngles = rot;
@@ -875,6 +886,8 @@ namespace LithFAQ
 
                         var szTemp = property2.Substring(startPos + 1, endPos - 1 - startPos);
 
+                        szTemp.Trim();
+
                         var splitStrings = szTemp.Split(' ');
 
                         Vector3 vAmbientRGB = Vector3.Normalize(new Vector3(
@@ -893,13 +906,13 @@ namespace LithFAQ
                             RenderSettings.ambientLight = new Color(0.1f, 0.1f, 0.1f, 255);
                             importer.defaultColor = new Color(0.1f, 0.1f, 0.1f, 255);
                         }
-                        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
                         RenderSettings.ambientIntensity = 1.0f;
                     }
                     else
                     {
                         importer.defaultColor = new Color(0.1f, 0.1f, 0.1f, 255);
-                        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
                         RenderSettings.ambientIntensity = 1.0f;
                     }
                 }

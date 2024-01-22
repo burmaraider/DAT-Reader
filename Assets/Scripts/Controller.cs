@@ -22,11 +22,11 @@ public class Controller : MonoBehaviour
         }
     }
 
-    public void ChangeAmbientLighting(UnityEngine.UI.Slider slider)
+    public void ChangeAmbientLighting(float slider)
     {
         Color col = GameObject.Find("Level").GetComponent<Importer>().defaultColor;
-        RenderSettings.ambientLight = col *= slider.value;
-        RenderSettings.ambientIntensity = slider.value;
+        RenderSettings.ambientLight = col *= slider;
+        RenderSettings.ambientIntensity = slider;
     }
 
 }

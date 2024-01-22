@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "com.limworks.urpssrpackage": "https://github.com/JoshuaLim007/Unity-ScreenSpaceReflections-URP.git",
+    "com.realgames.dear-imgui": "https://github.com/mattmanj17/dear-imgui-unity.git#matthewd",
     "com.unity.ai.navigation": "1.1.5",
     "com.unity.collab-proxy": "2.2.0",
     "com.unity.ide.rider": "3.0.27",

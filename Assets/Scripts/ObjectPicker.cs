@@ -106,7 +106,7 @@ public class ObjectPicker : MonoBehaviour
         {
             foreach (MeshRenderer mr in t.GetComponentsInChildren<MeshRenderer>())
             {
-                mr.enabled = !mr.enabled;
+                mr.enabled = b;
             }
         }
     }
