@@ -2814,6 +2814,7 @@ MonoBehaviour:
   importer: {fileID: 0}
   vHelpWindowSize: {x: 278, y: 82}
   vToggleOptionsSize: {x: 390, y: 82}
+  imguiTexture: {fileID: 2800000, guid: d8667ab63a8f7a84f8ea8dbd81af2b60, type: 3}
 --- !u!1 &1443143763
 GameObject:
   m_ObjectHideFlags: 0
@@ -4552,7 +4553,7 @@ Transform:
   m_GameObject: {fileID: 3830379585757831975}
   serializedVersion: 2
   m_LocalRotation: {x: -0.02660823, y: 0.8772359, z: -0.048954435, w: -0.4768151}
-  m_LocalPosition: {x: 12.967648, y: 6.5385256, z: 28.699398}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

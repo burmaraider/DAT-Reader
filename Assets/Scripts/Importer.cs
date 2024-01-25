@@ -77,21 +77,39 @@ public class Importer : MonoBehaviour
                 Debug.LogError("Could not find DAT reader for version " + version.ToString());
                 return;
             }
+            
             //load the DAT
             IDATReader reader = (IDATReader)DatReader;
             reader.Load(binaryReader);
+
+            UIActionManager.OnPostLoadLevel?.Invoke();
+
         }
         return;
     }
+
+    public void OnEnable()
+    {
+        UIActionManager.OnPreLoadLevel += OnPreLoadLevel;
+        UIActionManager.OnPreClearLevel += ClearLevel;
+
+    }
+
+    public void OnDisable()
+    {
+        UIActionManager.OnPreLoadLevel -= OnPreLoadLevel;
+        UIActionManager.OnPreClearLevel -= ClearLevel;
+    }
+
+    private void OnPreLoadLevel()
+    {
+        ClearLevel();
+        OpenDAT();
+    }
+    
     public void ClearLevel()
     {
-        if (DatReader != null)
-        {
-            IDATReader reader = (IDATReader)DatReader;
-            reader.ClearLevel();
-            ResetAllProperties();
-        }
-        
+        ResetAllProperties();     
     }
     
     private void ResetAllProperties()
@@ -99,12 +117,9 @@ public class Importer : MonoBehaviour
         projectPath = String.Empty;
         fileName = String.Empty;
         version = 0;
-        Destroy(DatReader);
-        DatReader = null;
         Resources.UnloadUnusedAssets();
 
-        //reset gui
-        GameObject.FindAnyObjectByType<MainGui>().Reset();
+        UIActionManager.OnReset?.Invoke();
     }
     
     private uint ReadDATVersion(ref BinaryReader binaryReader)
@@ -146,8 +161,16 @@ public class Importer : MonoBehaviour
             modelDefinition.modelType = type;
             if (!configButes.ContainsKey(type))
             {
-                ini.Open(projectPath + "\\Attributes\\CharacterButes.txt");
-                configButes.Add(type, ini); //stuff this away
+                if (File.Exists(projectPath + "\\Attributes\\CharacterButes.txt"))
+                {
+                    ini.Open(projectPath + "\\Attributes\\CharacterButes.txt");
+                    configButes.Add(type, ini); //stuff this away
+                }
+                else
+                {
+                    Debug.LogError("Could not find CharacterButes.txt");
+                    return null;
+                }
             }
             
 
@@ -203,8 +226,16 @@ public class Importer : MonoBehaviour
             modelDefinition.modelType = type;
             if (!configButes.ContainsKey(type))
             {
-                ini.Open(projectPath + "\\Attributes\\PickupButes.txt");
-                configButes.Add(type, ini); //stuff this away
+                if (File.Exists(projectPath + "\\Attributes\\PickupButes.txt"))
+                {
+                    ini.Open(projectPath + "\\Attributes\\PickupButes.txt");
+                    configButes.Add(type, ini); //stuff this away
+                }
+                else
+                {
+                    Debug.LogError("Could not find PickupButes.txt");
+                    return null;
+                }
             }
 
             foreach (var sections in configButes[type].GetSections)
@@ -305,6 +336,69 @@ public class Importer : MonoBehaviour
 
             return modelDefinition;
 
+        }
+        
+        if(type == ModelType.PropType)
+        {
+            modelDefinition.modelType = type;
+            
+            Dictionary<string, string> item = null;
+
+            if (!configButes.ContainsKey(type))
+            {
+                if (File.Exists(projectPath + "\\Attributes\\PropTypes.txt"))
+                {
+                    ini.Open(projectPath + "\\Attributes\\PropTypes.txt");
+                    configButes.Add(type, ini); //stuff this away
+                }
+                else
+                {
+                    Debug.LogError("Could not find PropTypes.txt");
+                    return null;
+                }
+            }
+
+            var test = objectInfo["Type"].ToString();
+
+
+
+            foreach (var sections in configButes[type].GetSections)
+            {
+
+                // check if keys has a name
+                if (sections.Value.ContainsKey("Type"))
+                {
+                    if (sections.Value["Type"].Replace("\"", "") != test)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        string modelName = configButes[type].ReadValue(sections.Key, "Filename", "1x1square.abc");
+
+                        if (!String.IsNullOrEmpty(modelName))
+                        {
+                            modelDefinition.szModelFileName = modelName.Replace("\"", "");
+                            modelDefinition.szModelFilePath = projectPath + "\\" + modelName.Replace("\"", "");
+                        }
+
+                        //get skins, could be up to 4, but not always defined.. FUN
+                        var szSkins = configButes[type].ReadValue(sections.Key, "Skin", "");
+
+                        string[] szSkinArray = szSkins.Split(';');
+
+                        foreach (var szSkin in szSkinArray)
+                        {
+                            modelDefinition.szModelTextureName.Add(szSkin.Replace("\"", ""));
+                        }
+                    }
+
+                    modelDefinition.bMoveToFloor = false;
+                    return modelDefinition;
+                }
+
+            }
+            
         }
 
         

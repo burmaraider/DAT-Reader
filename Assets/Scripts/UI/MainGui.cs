@@ -1,7 +1,9 @@
 using UnityEngine;
 using ImGuiNET;
-using System;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
+using System.Drawing;
+using System;
 
 public class MainGui : MonoBehaviour
 {
@@ -9,12 +11,13 @@ public class MainGui : MonoBehaviour
     public Importer importer;
     public Vector2 vHelpWindowSize = new Vector2(300, 300);
     public Vector2 vToggleOptionsSize = new Vector2(300, 300);
+    public Texture2D imguiTexture;
 
     public void Start()
     {
         if (importer == null)
         {
-            importer = GameObject.FindAnyObjectByType<Importer>();
+            importer = FindAnyObjectByType<Importer>();
         }
     }
 
@@ -25,17 +28,32 @@ public class MainGui : MonoBehaviour
         bToggleVolumes = true;
         bToggleBSP = true;
         bToggleShadows = false;
+        bObjectViewer = false;
+
+        var objectList = FindAnyObjectByType<ObjectList>();
+        Destroy(objectList);
     }
 
     // Subscribe to Layout events
     void OnEnable()
     {
         ImGuiUn.Layout += OnLayout;
+        UIActionManager.OnPostLoadLevel += OnLoadLevel;
+        UIActionManager.OnReset += Reset;
+        
     }
+
     // Unsubscribe as well
     void OnDisable()
     {
         ImGuiUn.Layout -= OnLayout;
+        UIActionManager.OnPostLoadLevel -= OnLoadLevel;
+        UIActionManager.OnReset -= Reset;
+    }
+
+    private void OnLoadLevel()
+    {
+        this.transform.gameObject.AddComponent<ObjectList>();
     }
 
     // Some bools for controlling different windows
@@ -44,6 +62,8 @@ public class MainGui : MonoBehaviour
     private bool bQuitClicked = false;
     private bool bShowHelp = true;
     private bool bShowToggleOptions = true;
+    private bool bShowAboutWindow = false;
+    private bool bObjectViewer = false;
 
     //Options
     private float fAmbientSlider = 1.0f;
@@ -62,23 +82,30 @@ public class MainGui : MonoBehaviour
         // The IF checks is what controls whether the window is actually displayed
         if (bLoadLevelClicked)
         {
-            LoadLevelClicked();
+            bLoadLevelClicked = false;
+            UIActionManager.OnPreLoadLevel?.Invoke();
         }
         if (bClearLevelClicked)
         {
-            ClearLevelClicked();
+            bClearLevelClicked = false;
+            UIActionManager.OnPreClearLevel?.Invoke();
         }
         if (bQuitClicked)
         {
-            QuitClicked();
+            Application.Quit();
         }
-        if(bShowHelp)
+        if (bShowHelp)
         {
             ShowHelpMenu();
         }
-        if(bShowToggleOptions)
+        if (bShowToggleOptions)
         {
             ShowToggleOptions();
+        }
+
+        if (bShowAboutWindow)
+        {
+            ShowAboutWindow();
         }
 
         Camera.main.GetComponent<ObjectPicker>().ToggleBlockers(bToggleBlockers);
@@ -87,6 +114,15 @@ public class MainGui : MonoBehaviour
         Camera.main.GetComponent<ObjectPicker>().ToggleVolumes(bToggleVolumes);
         Camera.main.GetComponent<ObjectPicker>().ToggleObjects(bToggleObjects);
         importer.gameObject.GetComponent<Controller>().ChangeAmbientLighting(fAmbientSlider);
+
+        ImGui.End();
+    }
+
+    private void ShowAboutWindow()
+    {
+        ImGui.Begin("About", ref bShowAboutWindow);
+
+        ImGui.TextWrapped("DAT Viewer 0.2.2 \r\nThis tool will open .DAT LithTech engine world files and display them. Eventually the aim of this w");
 
         ImGui.End();
     }
@@ -145,33 +181,7 @@ public class MainGui : MonoBehaviour
             ImGui.MenuItem("Quit", null, ref bQuitClicked);
             ImGui.EndMenu();
         }
+        ImGui.MenuItem("Help", null, ref bShowAboutWindow);
         ImGui.EndMainMenuBar();
-    }
-
-    private void LoadLevelClicked()
-    {
-        bLoadLevelClicked = false;
-        if (importer != null)
-        {
-            importer.OpenDAT();
-        }
-    }
-
-    private void ClearLevelClicked()
-    {
-        bClearLevelClicked = false;
-        if(importer != null)
-        {
-            importer.ClearLevel();
-        }
-    }
-
-    private void QuitClicked()
-    {
-        bQuitClicked = false;
-        if (importer != null)
-        {
-            Application.Quit();
-        }
     }
 }

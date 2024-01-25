@@ -124,7 +124,12 @@ public class ABCModelReader : MonoBehaviour
    
     public GameObject LoadABC(ModelDefinition mDef)
     {
-        
+
+        if (mDef == null)
+        {
+            return null;
+        }
+
         Model model = new Model();
         model.Name = Path.GetFileNameWithoutExtension(mDef.szModelFilePath);
 

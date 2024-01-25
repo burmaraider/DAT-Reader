@@ -22,11 +22,23 @@ namespace LithFAQ
         public WorldObjects LTGameObjects = new WorldObjects();
         WorldReader worldReader = new WorldReader();
         List<WorldBsp> bspListTest = new List<WorldBsp>();
+        public List<WorldObject> WorldObjectList = new List<WorldObject>();
 
         public float UNITYSCALEFACTOR = 0.01f; //default scale to fit in Unity's world.
         public Importer importer;
 
         public ABCModelReader abc;
+
+
+        public void OnEnable()
+        {
+            UIActionManager.OnPreClearLevel += ClearLevel;
+        }
+
+        public void OnDisable()
+        {
+            UIActionManager.OnPreClearLevel -= ClearLevel;
+        }
 
         public void Start()
         {
@@ -493,7 +505,6 @@ namespace LithFAQ
             }
         }
 
-
         public void LoadObjects(ref BinaryReader b)
         {
 
@@ -507,6 +518,8 @@ namespace LithFAQ
                 String objectName = String.Empty;
                 bool bInvisible = false;
                 bool bChromakey = false;
+
+                WorldObject thisObject = new WorldObject();
 
                 foreach (var subItem in obj.options)
                 {
@@ -754,8 +767,11 @@ namespace LithFAQ
                     
                     var gos = abc.LoadABC(temp);
 
-                    gos.transform.position = tempObject.transform.position;
-                    gos.transform.eulerAngles = rot;
+                    if (gos != null)
+                    {
+                        gos.transform.position = tempObject.transform.position;
+                        gos.transform.eulerAngles = rot;
+                    }
 
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
@@ -777,26 +793,46 @@ namespace LithFAQ
                     var temp = importer.CreateModelDefinition(szName, ModelType.Pickup, obj.options);
 
                     var gos = abc.LoadABC(temp);
-                    if (gos == null)
-                    {
-                        Debug.Log("Failed to load " + szName);
-                        continue;
-                    }
 
-                    gos.transform.position = tempObject.transform.position;
-                    gos.transform.eulerAngles = rot;
-
-                    //move to floort with raycast
-                    RaycastHit hit;
-                    if (Physics.Raycast(gos.transform.position, Vector3.down, out hit, 1000))
+                    if (gos != null)
                     {
-                        gos.transform.position = hit.point;
+                        gos.transform.position = tempObject.transform.position;
+                        gos.transform.eulerAngles = rot;
+
+
+                        //move to floort with raycast
+                        RaycastHit hit;
+                        if (Physics.Raycast(gos.transform.position, Vector3.down, out hit, 1000))
+                        {
+                            gos.transform.position = hit.point;
+                        }
                     }
 
 
                 }
 
-                if(obj.objectName == "Prop" || 
+                if (obj.objectName == "PropType")
+                {
+                    string szName = "";
+
+                    if (obj.options.ContainsKey("Name"))
+                    {
+                        szName = (string)obj.options["Name"];
+                    }
+
+
+                    var temp = importer.CreateModelDefinition(szName, ModelType.PropType, obj.options);
+
+                    var gos = abc.LoadABC(temp);
+
+                    if (gos != null)
+                    {
+                        gos.transform.position = tempObject.transform.position;
+                        gos.transform.eulerAngles = rot;
+                    }
+                }
+
+                if (obj.objectName == "Prop" || 
                     obj.objectName == "AmmoBox" ||
                     obj.objectName == "Beetle" ||
                     //obj.objectName == "BodyProp" || // not implemented
@@ -826,14 +862,11 @@ namespace LithFAQ
 
                     var gos = abc.LoadABC(temp);
                     
-                    if (gos == null)
+                    if (gos != null)
                     {
-                        Debug.Log("Failed to load " + szName);
-                        continue;
+                        gos.transform.position = tempObject.transform.position;
+                        gos.transform.eulerAngles = rot;
                     }
-
-                    gos.transform.position = tempObject.transform.position;
-                    gos.transform.eulerAngles = rot;
                 }
 
 
@@ -938,6 +971,8 @@ namespace LithFAQ
                 //Make a dictionary to make things easier
                 Dictionary<string, object> tempData = new Dictionary<string, object>();
 
+                tempObject.dataOffset = b.BaseStream.Position; // store our offset in our .dat
+
                 tempObject.dataLength = b.ReadInt16(); // Read our object datalength
 
                 var dataLength = b.ReadInt16(); //read out property length
@@ -1023,6 +1058,11 @@ namespace LithFAQ
                 temp.obj.Add(tempObject);
             }
             return temp;
+        }
+
+        public WorldObjects GetWorldObjects()
+        {
+            return LTGameObjects;
         }
     }
 }

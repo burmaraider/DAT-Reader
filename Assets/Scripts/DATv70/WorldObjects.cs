@@ -1,22 +1,23 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using static LithFAQ.LTTypes;
 
 public class WorldObjects
-    {
+{
         public List<WorldObject> obj;
 
         public int endingOffset;
-    }
+
+}
 public class WorldObject
     {
         public Dictionary<string, object> options;
         public string objectName;
         public string objectType;
         public Int16 dataLength;
-        public Int32 dataOffset;
+        public long dataOffset;
         public Int32 objectEntries;
-
     }
 
 public class VertexColor
