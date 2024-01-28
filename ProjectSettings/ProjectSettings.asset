@@ -643,6 +643,7 @@ PlayerSettings:
   webGLPowerPreference: 2
   scriptingDefineSymbols:
     Standalone: IMGUI_FEATURE_CUSTOM_ASSERT;IMGUI_FEATURE_FREETYPE
+    WebGL: IMGUI_FEATURE_CUSTOM_ASSERT;IMGUI_FEATURE_FREETYPE
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}
