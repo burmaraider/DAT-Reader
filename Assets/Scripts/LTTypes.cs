@@ -19,7 +19,7 @@ namespace LithFAQ
             PT_REAL = 3,
             PT_FLAGS = 4,
             PT_BOOL = 5,
-            PT_LONGINT = 6,
+            PT_UINT = 6,
             PT_ROTATION = 7
         }
 

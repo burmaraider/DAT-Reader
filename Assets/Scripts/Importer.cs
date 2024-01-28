@@ -4,6 +4,7 @@ using UnityEngine;
 using LithFAQ;
 using static LithFAQ.LTTypes;
 using static LithFAQ.LTUtils;
+using static DTX;
 using System.IO;
 using SFB;
 using System;
@@ -11,11 +12,11 @@ using System;
 public class Importer : MonoBehaviour
 {
     [SerializeField]
-    public DTX.DTXMaterial dtxMaterialList = new DTX.DTXMaterial();
+    public DTXMaterial dtxMaterialList = new DTXMaterial();
     public Component DatReader;
-    public string projectPath = String.Empty;
-    public string fileName;
-    public uint version;
+    public string szProjectPath = String.Empty;
+    public string szFileName;
+    public uint nVersion;
     public GameObject RuntimeGizmoPrefab;
 
 
@@ -30,97 +31,112 @@ public class Importer : MonoBehaviour
 
     public void OpenDAT()
     {
-        var extensions = new[] {
+        ExtensionFilter[] efExtensionFiler = new[] {
                 new ExtensionFilter("Lithtech World DAT", "dat" )
             };
         // Open file
-        var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, false);
+        string[] aFilePaths = StandaloneFileBrowser.OpenFilePanel("Open File", "", efExtensionFiler, false);
 
-        if (paths.Length > 0)
+        if (aFilePaths.Length > 0)
         {
-            this.projectPath = Path.GetDirectoryName(paths[0]);
-            fileName = Path.GetFileName(paths[0]);
-            Debug.Log("Project Path: " + this.projectPath);
-            Debug.Log("File Name: " + fileName);
-            Debug.Log("File Path: " + paths[0]);
+            this.szProjectPath = Path.GetDirectoryName(aFilePaths[0]);
+            szFileName = Path.GetFileName(aFilePaths[0]);
+            Debug.Log("Project Path: " + this.szProjectPath);
+            Debug.Log("File Name: " + szFileName);
+            Debug.Log("File Path: " + aFilePaths[0]);
 
-            Array.Resize(ref paths, 2);
-            string[] projectPath = StandaloneFileBrowser.OpenFolderPanel("Open Project Path", paths[0], false);
+            Array.Resize(ref aFilePaths, 2);
+            string[] projectPath = StandaloneFileBrowser.OpenFolderPanel("Open Project Path", aFilePaths[0], false);
             if (projectPath.Length > 0)
             {
-                paths[1] = projectPath[0];
-                this.projectPath = projectPath[0];
+                aFilePaths[1] = projectPath[0];
+                this.szProjectPath = projectPath[0];
             }
             else
             {
                 return;
             }
 
-            BinaryReader binaryReader = new BinaryReader(File.Open(paths[0], FileMode.Open));
-            
+            BinaryReader binaryReader = new BinaryReader(File.Open(aFilePaths[0], FileMode.Open));
+
             if (binaryReader == null)
             {
                 Debug.LogError("Could not open DAT file");
                 return;
             }
-            
-            version = ReadDATVersion(ref binaryReader);
+
+            nVersion = ReadDATVersion(ref binaryReader);
 
             DatReader = null;
 
             //Build the string to find the correct DAT reader class based on the version read from the DAT
-            string szComponentName = "LithFAQ.DATReader" + version.ToString();
+            string szComponentName = "LithFAQ.DATReader" + nVersion.ToString();
             DatReader = gameObject.AddComponent(Type.GetType(szComponentName));
 
             if (DatReader == null)
             {
-                Debug.LogError("Could not find DAT reader for version " + version.ToString());
+                Debug.LogError("Could not find DAT reader for version " + nVersion.ToString());
                 return;
             }
+
             //load the DAT
             IDATReader reader = (IDATReader)DatReader;
             reader.Load(binaryReader);
+
+            UIActionManager.OnPostLoadLevel?.Invoke();
+
         }
         return;
     }
+
+    public void OnEnable()
+    {
+        UIActionManager.OnPreLoadLevel += OnPreLoadLevel;
+        UIActionManager.OnPreClearLevel += ClearLevel;
+
+    }
+
+    public void OnDisable()
+    {
+        UIActionManager.OnPreLoadLevel -= OnPreLoadLevel;
+        UIActionManager.OnPreClearLevel -= ClearLevel;
+    }
+
+    private void OnPreLoadLevel()
+    {
+        ClearLevel();
+        OpenDAT();
+    }
+
     public void ClearLevel()
     {
-        if (DatReader != null)
-        {
-            IDATReader reader = (IDATReader)DatReader;
-            reader.ClearLevel();
-            ResetAllProperties();
-        }
-        
+        ResetAllProperties();
     }
-    
+
     private void ResetAllProperties()
     {
-        projectPath = String.Empty;
-        fileName = String.Empty;
-        version = 0;
-        Destroy(DatReader);
-        DatReader = null;
+        szProjectPath = String.Empty;
+        szFileName = String.Empty;
+        nVersion = 0;
         Resources.UnloadUnusedAssets();
 
-        //reset gui
-        GameObject.FindAnyObjectByType<MainGui>().Reset();
+        UIActionManager.OnReset?.Invoke();
     }
-    
+
     private uint ReadDATVersion(ref BinaryReader binaryReader)
-    {   
+    {
         uint version = binaryReader.ReadUInt32();
         binaryReader.BaseStream.Position = 0; //reset back to start of the file so that our DAT reader can read it
         return version;
     }
 
-    
+
     public ModelDefinition CreateModelDefinition(string szName, ModelType type, Dictionary<string, object> objectInfo = null)
     {
         //Bail out!
         if (type == ModelType.None)
             return null;
-        
+
         ModelDefinition modelDefinition = new ModelDefinition();
         INIParser ini = new INIParser();
 
@@ -134,11 +150,11 @@ public class Importer : MonoBehaviour
             {
                 modelDefinition.bMoveToFloor = !(bool)objectInfo["ForceNoMoveToGround"];
             }
-            if(objectInfo.ContainsKey("HumanOnly"))
+            if (objectInfo.ContainsKey("HumanOnly"))
             {
                 modelDefinition.bMoveToFloor = true;
             }
-            
+
         }
 
         if (type == ModelType.Character)
@@ -146,16 +162,24 @@ public class Importer : MonoBehaviour
             modelDefinition.modelType = type;
             if (!configButes.ContainsKey(type))
             {
-                ini.Open(projectPath + "\\Attributes\\CharacterButes.txt");
-                configButes.Add(type, ini); //stuff this away
+                if (File.Exists(szProjectPath + "\\Attributes\\CharacterButes.txt"))
+                {
+                    ini.Open(szProjectPath + "\\Attributes\\CharacterButes.txt");
+                    configButes.Add(type, ini); //stuff this away
+                }
+                else
+                {
+                    Debug.LogError("Could not find CharacterButes.txt");
+                    return null;
+                }
             }
-            
+
 
             Dictionary<string, string> item = null;
 
             if (type == ModelType.BodyProp)
             {
-                if(objectInfo.ContainsKey("CharacterType"))
+                if (objectInfo.ContainsKey("CharacterType"))
                 {
                     szName = (string)objectInfo["CharacterType"];
                 }
@@ -175,36 +199,44 @@ public class Importer : MonoBehaviour
                 }
                 if (key.Key == "DefaultSkin0")
                 {
-                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Replace("\"", ""));
+                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Trim('"'));
                 }
                 if (key.Key == "DefaultSkin1")
                 {
-                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Replace("\"", ""));
+                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Trim('"'));
                 }
                 if (key.Key == "DefaultSkin2")
                 {
-                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Replace("\"", ""));
+                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Trim('"'));
                 }
                 if (key.Key == "DefaultSkin3")
                 {
-                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Replace("\"", ""));
+                    modelDefinition.szModelTextureName.Add("Skins\\Characters\\" + key.Value.Trim('"'));
                 }
             }
 
-            modelDefinition.szModelFilePath = projectPath + "\\Models\\Characters\\" + modelDefinition.szModelFileName;
+            modelDefinition.szModelFilePath = szProjectPath + "\\Models\\Characters\\" + modelDefinition.szModelFileName;
             modelDefinition.FitTextureList();
 
             return modelDefinition;
         }
-        
+
 
         if (type == ModelType.Pickup)
         {
             modelDefinition.modelType = type;
             if (!configButes.ContainsKey(type))
             {
-                ini.Open(projectPath + "\\Attributes\\PickupButes.txt");
-                configButes.Add(type, ini); //stuff this away
+                if (File.Exists(szProjectPath + "\\Attributes\\PickupButes.txt"))
+                {
+                    ini.Open(szProjectPath + "\\Attributes\\PickupButes.txt");
+                    configButes.Add(type, ini); //stuff this away
+                }
+                else
+                {
+                    Debug.LogError("Could not find PickupButes.txt");
+                    return null;
+                }
             }
 
             foreach (var sections in configButes[type].GetSections)
@@ -223,10 +255,10 @@ public class Importer : MonoBehaviour
                     {
                         string modelName = configButes[type].ReadValue(sections.Key, "Model", "1x1square.abc");
 
-                        if(!String.IsNullOrEmpty(modelName))
+                        if (!String.IsNullOrEmpty(modelName))
                         {
                             modelDefinition.szModelFileName = modelName.Replace("\"", "");
-                            modelDefinition.szModelFilePath = projectPath + "\\" + modelName.Replace("\"", "");
+                            modelDefinition.szModelFilePath = szProjectPath + "\\" + modelName.Replace("\"", "");
                         }
 
                         //get skins, could be up to 4, but not always defined.. FUN
@@ -236,7 +268,7 @@ public class Importer : MonoBehaviour
                             string szSkinString = String.Format("Skin{0}", i);
 
                             modelDefinition.szModelTextureName.Add(configButes[type].ReadValue(sections.Key, szSkinString, "").Replace("\"", String.Empty));
-                            
+
                         }
                         modelDefinition.FitTextureList();
 
@@ -245,38 +277,6 @@ public class Importer : MonoBehaviour
                 }
 
             }
-
-            /*
-            var item = ini.GetSectionsByName("Tamiko");
-
-            foreach (var key in item)
-            {
-
-                if (key.Key == "DefaultModel")
-                {
-                    modelDefinition.szModelFileName = key.Value.Replace("\"", "");
-                }
-                if (key.Key == "DefaultSkin0")
-                {
-                    modelDefinition.szModelTextureName.Add(key.Value.Replace("\"", ""));
-                }
-                if (key.Key == "DefaultSkin1")
-                {
-                    modelDefinition.szModelTextureName.Add(key.Value.Replace("\"", ""));
-                }
-                if (key.Key == "DefaultSkin2")
-                {
-                    modelDefinition.szModelTextureName.Add(key.Value.Replace("\"", ""));
-                }
-                if (key.Key == "DefaultSkin3")
-                {
-                    modelDefinition.szModelTextureName.Add(key.Value.Replace("\"", ""));
-                }
-            }
-
-            modelDefinition.szModelFilePath = projectPath + "\\Models\\Characters\\" + modelDefinition.szModelFileName + ".abc";
-            modelDefinition.FitTextureList();
-            */
 
         }
 
@@ -296,9 +296,9 @@ public class Importer : MonoBehaviour
             }
 
             modelDefinition.szModelFileName = szFilename;
-            modelDefinition.szModelFilePath = projectPath + "\\" + modelDefinition.szModelFileName;
+            modelDefinition.szModelFilePath = szProjectPath + "\\" + modelDefinition.szModelFileName;
 
-            if(objectInfo.ContainsKey("Chromakey"))
+            if (objectInfo.ContainsKey("Chromakey"))
             {
                 modelDefinition.bChromakey = (bool)objectInfo["Chromakey"];
             }
@@ -307,10 +307,77 @@ public class Importer : MonoBehaviour
 
         }
 
-        
+        if (type == ModelType.PropType)
+        {
+            modelDefinition.modelType = type;
+
+            if (!configButes.ContainsKey(type))
+            {
+                if (File.Exists(szProjectPath + "\\Attributes\\PropTypes.txt"))
+                {
+                    ini.Open(szProjectPath + "\\Attributes\\PropTypes.txt");
+                    configButes.Add(type, ini); //stuff this away
+                }
+                else
+                {
+                    Debug.LogError("Could not find PropTypes.txt");
+                    return null;
+                }
+            }
+
+            string szType = objectInfo["Type"].ToString();
 
 
-            return null;
+
+            foreach (var sections in configButes[type].GetSections)
+            {
+
+                // check if keys has a name
+                if (sections.Value.ContainsKey("Type"))
+                {
+                    if (sections.Value["Type"].Replace("\"", "") != szType)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        string modelName = configButes[type].ReadValue(sections.Key, "Filename", "1x1square.abc");
+
+                        if (!String.IsNullOrEmpty(modelName))
+                        {
+                            modelDefinition.szModelFileName = modelName.Replace("\"", "");
+                            modelDefinition.szModelFilePath = szProjectPath + "\\" + modelName.Replace("\"", "");
+                        }
+
+                        //get skins, could be up to 4, but not always defined.. FUN
+                        string szSkins = configButes[type].ReadValue(sections.Key, "Skin", "");
+
+                        string[] szSkinArray = szSkins.Split(';');
+
+                        foreach (string szSkin in szSkinArray)
+                        {
+                            modelDefinition.szModelTextureName.Add(szSkin.Replace("\"", ""));
+                        }
+                    }
+
+                    string szMoveToFloorString = configButes[type].ReadValue(sections.Key, "MoveToFloor", "0");
+
+                    if (szMoveToFloorString == "1")
+                    {
+                        modelDefinition.bMoveToFloor = true;
+                    }
+                    else
+                    {
+                        modelDefinition.bMoveToFloor = false;
+                    }
+
+                    return modelDefinition;
+                }
+
+            }
+
+        }
+        return null;
     }
 
     public void Quit()

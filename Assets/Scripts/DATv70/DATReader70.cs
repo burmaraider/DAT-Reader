@@ -22,11 +22,23 @@ namespace LithFAQ
         public WorldObjects LTGameObjects = new WorldObjects();
         WorldReader worldReader = new WorldReader();
         List<WorldBsp> bspListTest = new List<WorldBsp>();
+        public List<WorldObject> WorldObjectList = new List<WorldObject>();
 
         public float UNITYSCALEFACTOR = 0.01f; //default scale to fit in Unity's world.
         public Importer importer;
 
         public ABCModelReader abc;
+
+
+        public void OnEnable()
+        {
+            UIActionManager.OnPreClearLevel += ClearLevel;
+        }
+
+        public void OnDisable()
+        {
+            UIActionManager.OnPreClearLevel -= ClearLevel;
+        }
 
         public void Start()
         {
@@ -70,7 +82,7 @@ namespace LithFAQ
                 {
                     DestroyImmediate(meshFilter.sharedMesh);
                 }
-                
+
                 Destroy(child.gameObject);
             }
 
@@ -163,7 +175,7 @@ namespace LithFAQ
             b.BaseStream.Position = worldReader.WorldHeader.dwObjectDataPos;
             LoadObjects(ref b);
 
-            importer.infoBox.text = string.Format("Loaded World: {0}", Path.GetFileName(importer.fileName));
+            importer.infoBox.text = string.Format("Loaded World: {0}", Path.GetFileName(importer.szFileName));
 
             b.BaseStream.Close();
 
@@ -193,7 +205,7 @@ namespace LithFAQ
                         tBSP.m_szWorldName.Contains("Wwater") ||
                         tBSP.m_szWorldName.Contains("weather", StringComparison.OrdinalIgnoreCase) ||
                         tBSP.m_szWorldName.Contains("rain", StringComparison.OrdinalIgnoreCase) && !tBSP.m_szWorldName.Contains("terrain", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_szWorldName.Contains("poison", StringComparison.OrdinalIgnoreCase)||
+                        tBSP.m_szWorldName.Contains("poison", StringComparison.OrdinalIgnoreCase) ||
                         tBSP.m_szWorldName.Contains("corrosive", StringComparison.OrdinalIgnoreCase) ||
                         tBSP.m_szWorldName.Contains("ladder", StringComparison.OrdinalIgnoreCase)
                         )
@@ -289,7 +301,7 @@ namespace LithFAQ
                                 {
                                     mainObject.tag = "Blocker";
                                 }
-                                
+
                             }
                         }
 
@@ -423,7 +435,7 @@ namespace LithFAQ
             //Load texture
             foreach (var tex in tBSP.m_aszTextureNames)
             {
-                DTX.LoadDTX(importer.projectPath + "\\" + tex, ref importer.dtxMaterialList, importer.projectPath);
+                DTX.LoadDTX(importer.szProjectPath + "\\" + tex, ref importer.dtxMaterialList, importer.szProjectPath);
             }
         }
 
@@ -493,7 +505,6 @@ namespace LithFAQ
             }
         }
 
-
         public void LoadObjects(ref BinaryReader b)
         {
 
@@ -507,6 +518,8 @@ namespace LithFAQ
                 String objectName = String.Empty;
                 bool bInvisible = false;
                 bool bChromakey = false;
+
+                WorldObject thisObject = new WorldObject();
 
                 foreach (var subItem in obj.options)
                 {
@@ -530,8 +543,8 @@ namespace LithFAQ
                 var tempObject = Instantiate(importer.RuntimeGizmoPrefab, objectPos, objectRot);
                 tempObject.name = objectName + "_obj";
                 tempObject.transform.eulerAngles = rot;
-                
-                if(obj.objectName == "WorldProperties")
+
+                if (obj.objectName == "WorldProperties")
                 {
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
@@ -556,7 +569,7 @@ namespace LithFAQ
 
                         if (subItem.Key == "Sound")
                         {
-                            szFilePath = importer.projectPath + "\\" + subItem.Value;
+                            szFilePath = importer.szProjectPath + "\\" + subItem.Value;
                         }
 
                         if (subItem.Key == "Loop")
@@ -580,7 +593,7 @@ namespace LithFAQ
 
                         if (subItem.Key == "Volume")
                         {
-                            float vol = (float)(Int64)subItem.Value;
+                            float vol = (UInt32)subItem.Value;
                             temp.volume = vol / 100;
                         }
                         if (subItem.Key == "OuterRadius")
@@ -631,7 +644,7 @@ namespace LithFAQ
                     foreach (var subItem in obj.options)
                     {
                         if (subItem.Key == "LightRadius")
-                            light.range = (float)subItem.Value * 0.20f;
+                            light.range = (float)subItem.Value * 0.01f;
 
                         else if (subItem.Key == "LightColor")
                         {
@@ -641,7 +654,7 @@ namespace LithFAQ
                         }
 
                         else if (subItem.Key == "BrightScale")
-                            light.intensity = (float)subItem.Value * 0.75f;
+                            light.intensity = (float)subItem.Value;
                     }
                     light.shadows = LightShadows.Soft;
 
@@ -671,10 +684,13 @@ namespace LithFAQ
                     foreach (var subItem in obj.options)
                     {
                         if (subItem.Key == "FOV")
+                        {
+                            light.innerSpotAngle = (float)subItem.Value;
                             light.spotAngle = (float)subItem.Value;
+                        }
 
                         else if (subItem.Key == "LightRadius")
-                            light.range = (float)subItem.Value * 0.025f;
+                            light.range = (float)subItem.Value * 0.01f;
 
                         else if (subItem.Key == "InnerColor")
                         {
@@ -684,7 +700,7 @@ namespace LithFAQ
                         }
 
                         else if (subItem.Key == "BrightScale")
-                            light.intensity = (float)subItem.Value * 0.65f;
+                            light.intensity = (float)subItem.Value * 15;
                     }
 
                     light.shadows = LightShadows.Soft;
@@ -721,7 +737,7 @@ namespace LithFAQ
                             light.color = new Color(col.x, col.y, col.z);
                         }
                         else if (subItem.Key == "BrightScale")
-                            light.intensity = (float)subItem.Value * 0.65f;
+                            light.intensity = (float)subItem.Value;
                     }
 
                     light.shadows = LightShadows.Soft;
@@ -741,7 +757,7 @@ namespace LithFAQ
                     }
                 }
 
-                if(obj.objectName == "GameStartPoint")
+                if (obj.objectName == "GameStartPoint")
                 {
 
                     int nCount = ModelDefinition.AVP2RandomCharacterGameStartPoint.Length;
@@ -751,11 +767,14 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.Character, obj.options);
 
-                    
                     var gos = abc.LoadABC(temp);
 
-                    gos.transform.position = tempObject.transform.position;
-                    gos.transform.eulerAngles = rot;
+                    if (gos != null)
+                    {
+                        gos.transform.position = tempObject.transform.position;
+                        gos.transform.eulerAngles = rot;
+                        gos.transform.parent = tempObject.transform;
+                    }
 
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
@@ -763,7 +782,7 @@ namespace LithFAQ
                     icon.gameObject.tag = "NoRayCast";
                 }
 
-                if(obj.objectName == "PickupObject")
+                if (obj.objectName == "PickupObject")
                 {
                     string szName = "";
 
@@ -777,26 +796,47 @@ namespace LithFAQ
                     var temp = importer.CreateModelDefinition(szName, ModelType.Pickup, obj.options);
 
                     var gos = abc.LoadABC(temp);
-                    if (gos == null)
-                    {
-                        Debug.Log("Failed to load " + szName);
-                        continue;
-                    }
 
-                    gos.transform.position = tempObject.transform.position;
-                    gos.transform.eulerAngles = rot;
-
-                    //move to floort with raycast
-                    RaycastHit hit;
-                    if (Physics.Raycast(gos.transform.position, Vector3.down, out hit, 1000))
+                    if (gos != null)
                     {
-                        gos.transform.position = hit.point;
+                        gos.transform.position = tempObject.transform.position;
+                        gos.transform.eulerAngles = rot;
+                        gos.transform.parent = tempObject.transform;
+
+                        //move to floort with raycast
+                        RaycastHit hit;
+                        if (Physics.Raycast(gos.transform.position, Vector3.down, out hit, 1000))
+                        {
+                            gos.transform.position = hit.point;
+                        }
                     }
 
 
                 }
 
-                if(obj.objectName == "Prop" || 
+                if (obj.objectName == "PropType")
+                {
+                    string szName = "";
+
+                    if (obj.options.ContainsKey("Name"))
+                    {
+                        szName = (string)obj.options["Name"];
+                    }
+
+
+                    var temp = importer.CreateModelDefinition(szName, ModelType.PropType, obj.options);
+
+                    var gos = abc.LoadABC(temp);
+
+                    if (gos != null)
+                    {
+                        gos.transform.position = tempObject.transform.position;
+                        gos.transform.eulerAngles = rot;
+                        gos.transform.parent = tempObject.transform;
+                    }
+                }
+
+                if (obj.objectName == "Prop" ||
                     obj.objectName == "AmmoBox" ||
                     obj.objectName == "Beetle" ||
                     //obj.objectName == "BodyProp" || // not implemented
@@ -825,27 +865,28 @@ namespace LithFAQ
                     var temp = importer.CreateModelDefinition(szName, ModelType.Prop, obj.options);
 
                     var gos = abc.LoadABC(temp);
-                    
-                    if (gos == null)
-                    {
-                        Debug.Log("Failed to load " + szName);
-                        continue;
-                    }
 
-                    gos.transform.position = tempObject.transform.position;
-                    gos.transform.eulerAngles = rot;
+                    if (gos != null)
+                    {
+                        gos.transform.position = tempObject.transform.position;
+                        gos.transform.eulerAngles = rot;
+                        gos.transform.parent = tempObject.transform;
+                    }
+                }
+
+                if (obj.objectName == "Trigger")
+                {
+                    //find child gameobject named Icon
+                    var icon = tempObject.transform.Find("Icon");
+                    icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/trigger");
+                    icon.gameObject.tag = "NoRayCast";
                 }
 
 
-                var g = GameObject.Find("objects");
+                    var g = GameObject.Find("objects");
                 tempObject.transform.SetParent(g.transform);
                 g.transform.localScale = Vector3.one;
 
-
-                
-                //var rtObj = newGO.AddComponent<RuntimeObjectType>();
-                //rtObj.cam = Camera.main.transform;
-                //rtObj.objectType = tempObject.name;
             }
 
 
@@ -858,65 +899,57 @@ namespace LithFAQ
         }
         public void SetupAmbientLight()
         {
-            if (worldReader.WorldProperties != null)
+            if (worldReader.WorldProperties == null)
+                return;
+
+            var worldPropertiesArray = worldReader.WorldProperties.Split(';');
+
+            foreach (var property in worldPropertiesArray)
             {
-                var worldPropertiesArray = worldReader.WorldProperties.Split(';');
-
-                foreach (var property in worldPropertiesArray)
+                if (!property.Contains("AmbientLight"))
                 {
-                    if (property.Contains("AmbientLight"))
-                    {
-
-                        string property2 = String.Empty;
-                        int ambPos = property.IndexOf("AmbientLight");
-                        int startPos = property.IndexOf(" ");
-
-                        int endPos = property.IndexOf(";");
-
-                        if (endPos == -1)
-                            endPos = property.Length;
-
-                        property2 = property;
-                        if (startPos == 0)
-                        {
-                            property2 = property.Substring(startPos + 1, endPos - 1 - startPos);
-                            startPos = property2.IndexOf(" ");
-                            endPos = property2.Length;
-                        }
-
-                        var szTemp = property2.Substring(startPos + 1, endPos - 1 - startPos);
-
-                        szTemp.Trim();
-
-                        var splitStrings = szTemp.Split(' ');
-
-                        Vector3 vAmbientRGB = Vector3.Normalize(new Vector3(
-                            float.Parse(splitStrings[0]),
-                            float.Parse(splitStrings[1]),
-                            float.Parse(splitStrings[2])
-                        ));
-
-                        var color = new Color(vAmbientRGB.x, vAmbientRGB.y, vAmbientRGB.y, 255);
-                        RenderSettings.ambientLight = color;
-                        importer.defaultColor = color;
-
-                        //Check if color is 0,0,0 and boost a bit
-                        if (color.r == 0 && color.g == 0 && color.b == 0)
-                        {
-                            RenderSettings.ambientLight = new Color(0.1f, 0.1f, 0.1f, 255);
-                            importer.defaultColor = new Color(0.1f, 0.1f, 0.1f, 255);
-                        }
-                        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
-                        RenderSettings.ambientIntensity = 1.0f;
-                    }
-                    else
-                    {
-                        importer.defaultColor = new Color(0.1f, 0.1f, 0.1f, 255);
-                        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
-                        RenderSettings.ambientIntensity = 1.0f;
-                    }
+                    SetDefaultAmbientLight();
+                    continue;
                 }
+
+                var splitStrings = property.Split(' ');
+
+                if (splitStrings.Length < 4)
+                {
+                    SetDefaultAmbientLight();
+                    continue;
+                }
+
+                Vector3 vAmbientRGB = Vector3.Normalize(new Vector3(
+                    float.Parse(splitStrings[1]),
+                    float.Parse(splitStrings[2]),
+                    float.Parse(splitStrings[3])
+                ));
+
+                var color = new Color(vAmbientRGB.x, vAmbientRGB.y, vAmbientRGB.z, 1);
+                SetAmbientLight(color);
             }
+        }
+
+        private void SetDefaultAmbientLight()
+        {
+            importer.defaultColor = new Color(0.1f, 0.1f, 0.1f, 1);
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
+            RenderSettings.ambientIntensity = 1.0f;
+        }
+
+        private void SetAmbientLight(Color color)
+        {
+            //Check if color is 0,0,0 and boost a bit
+            if (color.r == 0 && color.g == 0 && color.b == 0)
+            {
+                color = new Color(0.1f, 0.1f, 0.1f, 1);
+            }
+
+            RenderSettings.ambientLight = color;
+            importer.defaultColor = color;
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
+            RenderSettings.ambientIntensity = 1.0f;
         }
         public void Quit()
         {
@@ -925,104 +958,104 @@ namespace LithFAQ
 
         public static WorldObjects ReadObjects(ref BinaryReader b)
         {
-            WorldObjects temp = new WorldObjects();
-            temp.obj = new List<WorldObject>();
+            WorldObjects woObject = new WorldObjects();
+            woObject.obj = new List<WorldObject>();
 
-            var totalObjectCount = b.ReadInt32();
+            var nTotalObjectCount = b.ReadInt32();
 
-            for (int i = 0; i < totalObjectCount; i++)
+            for (int i = 0; i < nTotalObjectCount; i++)
             {
                 //Make a new object
-                WorldObject tempObject = new WorldObject();
+                WorldObject theObject = new WorldObject();
 
                 //Make a dictionary to make things easier
                 Dictionary<string, object> tempData = new Dictionary<string, object>();
 
-                tempObject.dataLength = b.ReadInt16(); // Read our object datalength
+                theObject.dataOffset = b.BaseStream.Position; // store our offset in our .dat
+
+                theObject.dataLength = b.ReadInt16(); // Read our object datalength
 
                 var dataLength = b.ReadInt16(); //read out property length
 
-                tempObject.objectName = ReadString(dataLength, ref b); // read our name
+                theObject.objectName = ReadString(dataLength, ref b); // read our name
 
-                tempObject.objectEntries = b.ReadInt16();// read how many properties this object has
+                theObject.objectEntries = b.ReadInt32();// read how many properties this object has
 
-                b.BaseStream.Position += 2;
-
-                for (int t = 0; t < tempObject.objectEntries; t++)
+                for (int t = 0; t < theObject.objectEntries; t++)
                 {
 
-                    var tempDataLength = b.ReadInt16();
-                    string propertyName = ReadString(tempDataLength, ref b);
+                    var nObjectPropertyDataLength = b.ReadInt16();
+                    string szPropertyName = ReadString(nObjectPropertyDataLength, ref b);
 
-                    byte propType = b.ReadByte();
+                    PropType propType = (PropType)b.ReadByte();
 
                     switch (propType)
                     {
-                        case (byte)PropType.PT_STRING:
-                            b.BaseStream.Position += 6; // skip property flags;
-                                                        //Get Data Length
-                            tempDataLength = b.ReadInt16();
+                        case PropType.PT_STRING:
+                            theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
+                            theObject.objectEntryStringDataLength.Add(b.ReadInt16()); //read the string length plus the data length
+                            nObjectPropertyDataLength = b.ReadInt16();
                             //Read the string
-                            tempData.Add(propertyName, ReadString(tempDataLength, ref b));
+                            tempData.Add(szPropertyName, ReadString(nObjectPropertyDataLength, ref b));
                             break;
 
-                        case (byte)PropType.PT_VECTOR:
-                            b.BaseStream.Position += 4; // skip property flags;
-                                                        //Get our data length
-                            tempDataLength = b.ReadInt16();
+                        case PropType.PT_VECTOR:
+
+                            theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
+                            nObjectPropertyDataLength = b.ReadInt16();
                             //Get our float data
                             LTVector tempVec = ReadLTVector(ref b);
                             //Add our object to the Dictionary
-                            tempData.Add(propertyName, tempVec);
+                            tempData.Add(szPropertyName, tempVec);
                             break;
 
-                        case (byte)PropType.PT_ROTATION:
-                            b.BaseStream.Position += 4; // skip property flags;
-                                                        //Get our data length
-                            tempDataLength = b.ReadInt16();
+                        case PropType.PT_ROTATION:
+                            theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
+                                                                          //Get our data length
+                            nObjectPropertyDataLength = b.ReadInt16();
                             //Get our float data
                             LTRotation tempRot = ReadLTRotation(ref b);
                             //Add our object to the Dictionary
-                            tempData.Add(propertyName, tempRot);
+                            tempData.Add(szPropertyName, tempRot);
                             break;
-                        case (byte)PropType.PT_LONGINT:
-                            b.BaseStream.Position += 2; // skip property flags;
-                                                        //Get our data length
-                            Int64 longInt = ReadLongInt(ref b);
-                            //b.BaseStream.Position += 4;
-                            //b.BaseStream.Position += 2;
+                        case PropType.PT_UINT:
+                            theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
+                            nObjectPropertyDataLength = b.ReadInt16();
                             //Add our object to the Dictionary
-                            tempData.Add(propertyName, longInt);
+                            tempData.Add(szPropertyName, b.ReadUInt32());
                             break;
-                        case (byte)PropType.PT_BOOL:
-                            b.BaseStream.Position += 6; // skip property flags;
-                                                        //Add our object to the Dictionary
-                            tempData.Add(propertyName, ReadBool(ref b));
+                        case PropType.PT_BOOL:
+                            theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
+                            nObjectPropertyDataLength = b.ReadInt16();
+                            tempData.Add(szPropertyName, ReadBool(ref b));
                             break;
-                        case (byte)PropType.PT_REAL:
-                            b.BaseStream.Position += 4; // skip property flags;
-                                                        //Get our data length
-                            tempDataLength = b.ReadInt16();
+                        case PropType.PT_REAL:
+                            theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
+                            nObjectPropertyDataLength = b.ReadInt16();
                             //Add our object to the Dictionary
-                            tempData.Add(propertyName, ReadReal(ref b));
+                            tempData.Add(szPropertyName, ReadReal(ref b));
                             break;
-                        case (byte)PropType.PT_COLOR:
-                            b.BaseStream.Position += 4; // skip property flags;
-                                                        //Get our data length
-                            tempDataLength = b.ReadInt16();
+                        case PropType.PT_COLOR:
+                            theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
+                            nObjectPropertyDataLength = b.ReadInt16();
                             //Get our float data
                             LTVector tempCol = ReadLTVector(ref b);
                             //Add our object to the Dictionary
-                            tempData.Add(propertyName, tempCol);
+                            tempData.Add(szPropertyName, tempCol);
                             break;
                     }
                 }
 
-                tempObject.options = tempData;
+                theObject.options = tempData;
 
-                temp.obj.Add(tempObject);
+                woObject.obj.Add(theObject);
             }
-            return temp;
+            return woObject;
+        }
+
+        public WorldObjects GetWorldObjects()
+        {
+            return LTGameObjects;
         }
     }
 }
