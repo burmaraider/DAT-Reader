@@ -30,16 +30,6 @@ public class ModelDefinition
 
     public void FitTextureList()
     {
-        if (szModelTextureName.Count > 0)
-        {
-            //remove empty texture name
-            for (int i = szModelTextureName.Count - 1; i >= 0; i--)
-            {
-                if (string.IsNullOrEmpty(szModelTextureName[i]))
-                {
-                    szModelTextureName.RemoveAt(i);
-                }
-            }
-        }
+        szModelTextureName.RemoveAll(string.IsNullOrEmpty);
     }
 }

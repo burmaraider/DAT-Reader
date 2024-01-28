@@ -2761,7 +2761,7 @@ MonoBehaviour:
   _doGlobalLayout: 1
   _camera: {fileID: 8302621246420944145}
   _renderFeature: {fileID: -7275450097375682190, guid: 1fb619f959302a84984934cf90875a6b, type: 2}
-  _rendererType: 1
+  _rendererType: 0
   _platformType: 0
   _initialConfiguration:
     KeyboardNavigation: 0
@@ -3065,9 +3065,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   DatReader: {fileID: 0}
-  projectPath: 
-  fileName: 
-  version: 0
+  szProjectPath: 
+  szFileName: 
+  nVersion: 0
   RuntimeGizmoPrefab: {fileID: 3749955941053583291, guid: 42ac43bc1e4026d4d80ae9b155d75b4f, type: 3}
   defaultMaterial: {fileID: 2100000, guid: 0c4b0ad432174f248b2289c5f7ae49c4, type: 2}
   defaultColor: {r: 0.62471354, g: 0.9245283, b: 0.6236205, a: 1}
@@ -4643,6 +4643,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   selectedObject: {fileID: 0}
   infoBox: {fileID: 47801828}
+  selectionBox: {fileID: 0}
 --- !u!20 &8302621246420944145
 Camera:
   m_ObjectHideFlags: 0
@@ -4674,7 +4675,7 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
+  near clip plane: 0.05
   far clip plane: 1000
   field of view: 60
   orthographic: 0

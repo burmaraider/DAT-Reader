@@ -32,13 +32,15 @@ public class MainGui : MonoBehaviour
 
         var objectList = FindAnyObjectByType<ObjectList>();
         Destroy(objectList);
+        var objectProperties = FindAnyObjectByType<ObjectProperties>();
+        Destroy(objectProperties);
     }
 
     // Subscribe to Layout events
     void OnEnable()
     {
         ImGuiUn.Layout += OnLayout;
-        UIActionManager.OnPostLoadLevel += OnLoadLevel;
+        UIActionManager.OnPostLoadLevel += OnPostLoadLevel;
         UIActionManager.OnReset += Reset;
         
     }
@@ -47,13 +49,18 @@ public class MainGui : MonoBehaviour
     void OnDisable()
     {
         ImGuiUn.Layout -= OnLayout;
-        UIActionManager.OnPostLoadLevel -= OnLoadLevel;
+        UIActionManager.OnPostLoadLevel -= OnPostLoadLevel;
         UIActionManager.OnReset -= Reset;
     }
 
-    private void OnLoadLevel()
+    /// <summary>
+    /// This function is called after the level is loaded.
+    /// Add the ObjectList and ObjectProperties components to the main game object so that we can select and edit objects in the game world
+    /// </summary>
+    private void OnPostLoadLevel()
     {
         this.transform.gameObject.AddComponent<ObjectList>();
+        this.transform.gameObject.AddComponent<ObjectProperties>();
     }
 
     // Some bools for controlling different windows
@@ -89,6 +96,7 @@ public class MainGui : MonoBehaviour
         {
             bClearLevelClicked = false;
             UIActionManager.OnPreClearLevel?.Invoke();
+            DestroyImmediate(this.transform.gameObject.GetComponent<ObjectProperties>());
         }
         if (bQuitClicked)
         {
@@ -120,6 +128,7 @@ public class MainGui : MonoBehaviour
 
     private void ShowAboutWindow()
     {
+        ImGui.SetNextWindowSize(new Vector2(300, 300));
         ImGui.Begin("About", ref bShowAboutWindow);
 
         ImGui.TextWrapped("DAT Viewer 0.2.2 \r\nThis tool will open .DAT LithTech engine world files and display them. Eventually the aim of this w");
@@ -171,8 +180,9 @@ public class MainGui : MonoBehaviour
     // Top bar creation
     private void ShowMainHeaderBar()
     {
+        ImGui.SetNextWindowBgAlpha(1.0f);
         ImGui.BeginMainMenuBar();
-
+        ImGui.SetNextWindowBgAlpha(1.0f);
         if (ImGui.BeginMenu("File"))
         {
             ImGui.MenuItem("Load Level", null, ref bLoadLevelClicked);
@@ -181,7 +191,15 @@ public class MainGui : MonoBehaviour
             ImGui.MenuItem("Quit", null, ref bQuitClicked);
             ImGui.EndMenu();
         }
-        ImGui.MenuItem("Help", null, ref bShowAboutWindow);
+        if (ImGui.BeginMenu("View"))
+        {
+            ImGui.MenuItem("Options Toggle Menu", null, ref bShowToggleOptions);
+            ImGui.MenuItem("Tooltip Menu", null, ref bShowHelp);
+            ImGui.EndMenu();
+        }
+        ImGui.MenuItem("About", null, ref bShowAboutWindow);
         ImGui.EndMainMenuBar();
+
+        ImGui.SetNextWindowBgAlpha(ImGui.GetStyle().Alpha);
     }
 }

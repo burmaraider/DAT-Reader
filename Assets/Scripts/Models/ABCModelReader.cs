@@ -206,7 +206,7 @@ public class ABCModelReader : MonoBehaviour
         //load dtx textures
         foreach (var tex in mDef.szModelTextureName)
         {
-            DTX.LoadDTX(importer.projectPath + "\\" + tex, ref importer.dtxMaterialList, importer.projectPath);
+            DTX.LoadDTX(importer.szProjectPath + "\\" + tex, ref importer.dtxMaterialList, importer.szProjectPath);
         }
 
         mDef.model = model;

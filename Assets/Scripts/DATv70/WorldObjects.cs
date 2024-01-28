@@ -5,20 +5,24 @@ using static LithFAQ.LTTypes;
 
 public class WorldObjects
 {
-        public List<WorldObject> obj;
 
-        public int endingOffset;
+    public List<WorldObject> obj;
+
+    public int endingOffset;
 
 }
 public class WorldObject
-    {
-        public Dictionary<string, object> options;
-        public string objectName;
-        public string objectType;
-        public Int16 dataLength;
-        public long dataOffset;
-        public Int32 objectEntries;
-    }
+{
+    public Dictionary<string, object> options;
+    public string objectName;
+    public string objectType;
+    public Int16 dataLength;
+    public long dataOffset;
+    public Int32 objectEntries;
+    public List<Int32> objectEntryFlag = new List<Int32>();
+    public List<short> objectEntryStringDataLength = new List<short>();
+    public List<short> objectEntryStringLength = new List<short>();
+}
 
 public class VertexColor
 {
