@@ -136,6 +136,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   selectedObject: {fileID: 0}
   infoBox: {fileID: 0}
+  selectionBox: {fileID: 0}
 --- !u!114 &3569182602741185117
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -152,8 +153,7 @@ MonoBehaviour:
   m_RequiresDepthTextureOption: 2
   m_RequiresOpaqueTextureOption: 2
   m_CameraType: 0
-  m_Cameras:
-  - {fileID: 0}
+  m_Cameras: []
   m_RendererIndex: -1
   m_VolumeLayerMask:
     serializedVersion: 2

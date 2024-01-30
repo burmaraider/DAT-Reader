@@ -12,6 +12,7 @@ using static Utility.MaterialSafeMeshCombine;
 using static DTX;
 using TMPro;
 using System.Xml.Linq;
+using UnityEditor.ShaderGraph.Drawing.Inspector.PropertyDrawers;
 
 
 
@@ -214,9 +215,11 @@ namespace LithFAQ
                     }
 
                     LoadTexturesForBSP(tBSP);
+                    
 
                     foreach (WorldPoly tPoly in tBSP.m_pPolies)
                     {
+
                         //remove all bsp invisible
                         if (tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Invisible.dtx", StringComparison.OrdinalIgnoreCase) ||
                             tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Sky.dtx", StringComparison.OrdinalIgnoreCase) ||
@@ -428,6 +431,55 @@ namespace LithFAQ
             //Batch all the objects
             StaticBatchingUtility.Combine(toBatch.ToArray(), gLevelRoot);
             await System.Threading.Tasks.Task.Yield();
+            
+            SetupSkyBoxMaterials();
+        }
+
+        /// <summary>
+        /// Sets up the skybox materials, Lithtech engine games use SkyPointer's to set the index of the skybox objects <br />
+        /// We can use Unity's Render Queue to set the order of the skybox objects
+        /// </summary>
+        private void SetupSkyBoxMaterials()
+        {
+            Shader shaderUnlitTransparent = Shader.Find("Unlit/Transparent");
+
+            foreach (var item in LTGameObjects.obj)
+            {
+                if (!item.objectName.Contains("SkyPointer", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var twmName = (string)item.options["SkyObjectName"];
+                var twmTranslucentWorldModel = GameObject.Find(twmName);
+
+                if (!twmTranslucentWorldModel) continue;
+
+                bool bHasIndex = item.options.ContainsKey("Index");
+                float nIndex = 0;
+                if (bHasIndex)
+                {
+                    var nValue = (UInt32)item.options["Index"];
+                    var aBytes = BitConverter.GetBytes(nValue);
+                    nIndex = BitConverter.ToSingle(aBytes, 0);
+                }
+
+                foreach (var mrMeshRenderer in twmTranslucentWorldModel.GetComponentsInChildren<MeshRenderer>())
+                {
+                    //set layer to 8 which is SkyBox so it doessssn't get rendered by the Main Camera.
+                    mrMeshRenderer.gameObject.layer = 8;
+
+                    //Since we combine meshes we need to set the material for each submesh
+                    foreach (var mat in mrMeshRenderer.materials)
+                    {
+                        mat.shader = shaderUnlitTransparent;
+
+                        //set the render queue to 3000 + the index value so the SkyPointer can control which element is drawn first.
+                        if (bHasIndex)
+                        {
+                            mat.renderQueue = (int)nIndex + 3000;
+                        }
+                    }
+                }
+            }
         }
 
         private void LoadTexturesForBSP(WorldBsp tBSP)
@@ -490,16 +542,11 @@ namespace LithFAQ
                     }
                     else
                     {
-                        if (www.downloadHandler.data[20] == 85)
-                        {
+
                             AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
                             audioSource.clip = clip;
                             audioSource.Play();
-                        }
-                        else
-                        {
-                            bIsNotWAV = true;
-                        }
+
                     }
                 }
             }
@@ -550,6 +597,7 @@ namespace LithFAQ
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/worldproperties");
                     icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.layer = 7;
                 }
 
                 if (obj.objectName == "SoundFX")
@@ -558,6 +606,7 @@ namespace LithFAQ
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/sound");
                     icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.layer = 7;
 
                     AudioSource temp = tempObject.AddComponent<AudioSource>();
                     var volumeControl = tempObject.AddComponent<Volume2D>();
@@ -637,6 +686,7 @@ namespace LithFAQ
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
                     icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.layer = 7;
 
                     var light = tempObject.gameObject.AddComponent<Light>();
 
@@ -678,6 +728,7 @@ namespace LithFAQ
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
                     icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.layer = 7;
                     var light = tempObject.gameObject.AddComponent<Light>();
 
 
@@ -726,6 +777,7 @@ namespace LithFAQ
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
                     icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.layer = 7;
                     var light = tempObject.gameObject.AddComponent<Light>();
 
                     foreach (var subItem in obj.options)
@@ -774,12 +826,14 @@ namespace LithFAQ
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
                         gos.transform.parent = tempObject.transform;
+                        gos.tag = "NoRayCast";
                     }
 
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/gsp");
                     icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.layer = 7;
                 }
 
                 if (obj.objectName == "PickupObject")
@@ -802,13 +856,8 @@ namespace LithFAQ
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
                         gos.transform.parent = tempObject.transform;
-
-                        //move to floort with raycast
-                        RaycastHit hit;
-                        if (Physics.Raycast(gos.transform.position, Vector3.down, out hit, 1000))
-                        {
-                            gos.transform.position = hit.point;
-                        }
+                        gos.tag = "NoRayCast";
+                        gos.layer = 2;
                     }
 
 
@@ -833,6 +882,7 @@ namespace LithFAQ
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
                         gos.transform.parent = tempObject.transform;
+                        gos.tag = "NoRayCast";
                     }
                 }
 
@@ -871,6 +921,7 @@ namespace LithFAQ
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
                         gos.transform.parent = tempObject.transform;
+                        gos.tag = "NoRayCast";
                     }
                 }
 
@@ -880,6 +931,7 @@ namespace LithFAQ
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/trigger");
                     icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.layer = 7;
                 }
 
 

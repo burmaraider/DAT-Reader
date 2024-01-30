@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fef981ba5c204944fb4d92b74b765bd9, type: 3}
   m_Name: UIStyle
   m_EditorClassIdentifier: 
-  Alpha: 0.5
+  Alpha: 0.75
   WindowPadding: {x: 8, y: 8}
   WindowRounding: 8
   WindowBorderSize: 0

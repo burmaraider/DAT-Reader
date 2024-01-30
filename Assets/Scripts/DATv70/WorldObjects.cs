@@ -1,3 +1,4 @@
+using LithFAQ;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -23,6 +24,24 @@ public class WorldObject
     public List<short> objectEntryStringDataLength = new List<short>();
     public List<short> objectEntryStringLength = new List<short>();
 }
+
+public class PropertyEntry
+{
+    public PropType propType;
+    public Int32 propFlags;
+    public short propDataOffset;
+    public string szPropertyName;
+    public object oPropertyValue;
+}
+
+public class LithObject
+{
+    public string szObjectName;
+    public string szObjectType;
+    public long nOffset;
+    public List<PropertyEntry> vPropertyEntries = new List<PropertyEntry>();
+}
+
 
 public class VertexColor
 {

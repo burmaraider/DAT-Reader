@@ -6,12 +6,20 @@ public class DebugLines : MonoBehaviour
 {
     public float raycastDistance = 20f;
     public float circleRadius = 1f;
-    private RaycastHit hit;
+    public RaycastHit hit;
 
-    private bool bFoundGround = false;
+    public bool bFoundGround = false;
+    public bool bCanAddCollider = false;
 
-    void LateUpdate()
+    void Update()
     {
+        if (bCanAddCollider)
+        {
+            var mc = transform.gameObject.AddComponent<MeshCollider>();
+            mc.sharedMesh = transform.gameObject.GetComponent<MeshFilter>().mesh;
+            bCanAddCollider = false;
+        }
+        
         if (bFoundGround)
             return;
             
@@ -27,26 +35,23 @@ public class DebugLines : MonoBehaviour
         //move object to hit point
         if (hitSomething)
         {
+
             if (hit.collider.CompareTag("NoRayCast"))
                 return;
 
-            
             //calculate bounds of object so it doesnt fall through the floor
             Bounds bounds = GetComponent<Renderer>().bounds;
             float halfHeight = bounds.extents.y;
-            float halfWidth = bounds.extents.x;
-            float halfDepth = bounds.extents.z;
 
-            // Add a small offset to the y-coordinate of the hit point.
-            float yOffset = halfHeight - 0.01f;
+            //sometimes pivot point isnt in the middle of the object, so we need to compoensate for that
+            float pivotOffset = transform.position.y - bounds.center.y;
 
             //move object to hit point
-            transform.position = new Vector3(hit.point.x, hit.point.y + yOffset, hit.point.z);
+            transform.position = new Vector3(transform.position.x, hit.point.y + halfHeight + pivotOffset, transform.position.z);
 
             bFoundGround = true;
 
-            var mc = transform.gameObject.AddComponent<MeshCollider>();
-            mc.sharedMesh = transform.gameObject.GetComponent<MeshFilter>().mesh;
+            bCanAddCollider = true;
 
         }
 
@@ -94,3 +99,4 @@ public static class DebugExtension
         }
     }
 }
+
