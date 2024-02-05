@@ -26,7 +26,36 @@ namespace LithFAQ
         PORTAL = 0x1000,
         PANNINGSKY = 0x1000,
     }
+
+    [Flags]
+    public enum Game
+    {
+        AVP2 = 0,
+        NOLF,
+        NOLF2,
+        TRON,
+        SHOGO,
+        KISS,
+        CONTRACTJACK,
+        DIEHARD,
+    }
     
+    public static class GlobalStuff
+    {
+        public static readonly string[] szGameNames = {
+            "Aliens Vs. Predator 2",
+            "No One Lives Forever",
+            "No One Lives Forever 2",
+            "TRON 2.0",
+            "Shogo: Mobile Armor Division",
+            "KISS Psycho Circus",
+            "Contract Jack",
+            "Die Hard: Nakatomi Plaza"
+        };
+
+    }
+
+
     public static class LTUtils
     {
         public static String ReadString(int dataLength, ref BinaryReader b)

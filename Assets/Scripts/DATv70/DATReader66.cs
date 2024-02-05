@@ -18,7 +18,7 @@ using UnityEngine.Profiling;
 
 namespace LithFAQ
 {
-    public class DATReader70 : MonoBehaviour, IDATReader
+    public class DATReader66 : MonoBehaviour, IDATReader
     {
         public WorldObjects LTGameObjects = new WorldObjects();
         WorldReader worldReader = new WorldReader();
@@ -204,6 +204,7 @@ namespace LithFAQ
                     mainObject.AddComponent<MeshRenderer>().material = importer.defaultMaterial;
 
                     if (tBSP.m_aszTextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
+                        tBSP.m_aszTextureNames[0].Contains("sound.dtx", StringComparison.OrdinalIgnoreCase) ||
                         tBSP.m_szWorldName.Contains("volume", StringComparison.OrdinalIgnoreCase) ||
                         tBSP.m_szWorldName.Contains("Wwater") ||
                         tBSP.m_szWorldName.Contains("weather", StringComparison.OrdinalIgnoreCase) ||
@@ -248,9 +249,11 @@ namespace LithFAQ
                         //Convert OPQ to UV magic
                         Vector3 center = tPoly.m_vCenter;
 
-                        Vector3 o = tPoly.m_O;
-                        Vector3 p = tPoly.m_P;
-                        Vector3 q = tPoly.m_Q;
+                        //Vector3 O = 
+
+                        Vector3 o = tPoly.GetSurface(tBSP).m_fUV1;
+                        Vector3 p = tPoly.GetSurface(tBSP).m_fUV2;
+                        Vector3 q = tPoly.GetSurface(tBSP).m_fUV3;
 
                         o *= UNITYSCALEFACTOR;
                         o -= (Vector3)tPoly.m_vCenter;
@@ -836,45 +839,18 @@ namespace LithFAQ
                     icon.gameObject.layer = 7;
                 }
 
-                if (obj.objectName == "PickupObject")
-                {
-                    string szName = "";
-
-                    if (obj.options.ContainsKey("Pickup"))
-                    {
-                        szName = (string)obj.options["Pickup"];
-                    }
-
-                    //abc.FromFile("Assets/Models/" + szName + ".abc", true);
-
-                    var temp = importer.CreateModelDefinition(szName, ModelType.Pickup, obj.options);
-
-                    var gos = abc.LoadABC(temp);
-
-                    if (gos != null)
-                    {
-                        gos.transform.position = tempObject.transform.position;
-                        gos.transform.eulerAngles = rot;
-                        gos.transform.parent = tempObject.transform;
-                        gos.tag = "NoRayCast";
-                        gos.layer = 2;
-                    }
-
-
-                }
-
                 if (obj.objectName == "WeaponItem")
                 {
                     string szName = "";
 
-                    if (obj.options.ContainsKey("Pickup"))
+                    if (obj.options.ContainsKey("WeaponType"))
                     {
-                        szName = (string)obj.options["Pickup"];
+                        szName = (string)obj.options["WeaponType"];
                     }
 
                     //abc.FromFile("Assets/Models/" + szName + ".abc", true);
 
-                    var temp = importer.CreateModelDefinition(szName, ModelType.Pickup, obj.options);
+                    var temp = importer.CreateModelDefinition(szName, ModelType.WeaponItem, obj.options);
 
                     var gos = abc.LoadABC(temp);
 

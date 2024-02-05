@@ -14,9 +14,6 @@ public class Importer : MonoBehaviour
     [SerializeField]
     public DTXMaterial dtxMaterialList = new DTXMaterial();
     public Component DatReader;
-    public string szProjectPath = String.Empty;
-    public string szFileName;
-    public uint nVersion;
     public GameObject RuntimeGizmoPrefab;
 
 
@@ -26,6 +23,13 @@ public class Importer : MonoBehaviour
     public UnityEngine.UI.Text infoBox;
     public UnityEngine.UI.Text loadingUI;
     public GameObject prefab;
+
+    [Header("GameSpecific")]
+    public string szProjectPath = String.Empty;
+    public string szFileName;
+    public uint nVersion;
+    public int nSelectedGame;
+    public Game eGame { get { return (Game)nSelectedGame; }}
 
     public Dictionary<ModelType, INIParser> configButes = new Dictionary<ModelType, INIParser>();
 
@@ -227,9 +231,25 @@ public class Importer : MonoBehaviour
             modelDefinition.modelType = type;
             if (!configButes.ContainsKey(type))
             {
-                if (File.Exists(szProjectPath + "\\Attributes\\PickupButes.txt"))
+                IDATReader reader = (IDATReader)DatReader;
+
+                var nVersion = reader.GetVersion();
+
+                string szButeFile = String.Empty;
+
+                if(nVersion > 66)
                 {
-                    ini.Open(szProjectPath + "\\Attributes\\PickupButes.txt");
+                    szButeFile = szProjectPath + "\\Attributes\\PickupButes.txt";
+                }
+                else
+                {
+                    szButeFile = szProjectPath + "\\Attributes\\Weapons.txt";
+                }
+
+                
+                if (File.Exists(szButeFile))
+                {
+                    ini.Open(szButeFile);
                     configButes.Add(type, ini); //stuff this away
                 }
                 else
@@ -253,7 +273,15 @@ public class Importer : MonoBehaviour
                     }
                     else
                     {
-                        string modelName = configButes[type].ReadValue(sections.Key, "Model", "1x1square.abc");
+
+                        string modelName = String.Empty;
+
+                        if (nVersion > 66)
+                            configButes[type].ReadValue(sections.Key, "Model", "1x1square.abc");
+                        else
+                            configButes[type].ReadValue(sections.Key, "HHModel", "1x1square.abc");
+                        
+                        
 
                         if (!String.IsNullOrEmpty(modelName))
                         {
@@ -263,14 +291,110 @@ public class Importer : MonoBehaviour
 
                         //get skins, could be up to 4, but not always defined.. FUN
 
-                        for (int i = 0; i < 4; i++)
+                        if (nVersion > 66)
                         {
-                            string szSkinString = String.Format("Skin{0}", i);
+                            for (int i = 0; i < 4; i++)
+                            {
+                                string szSkinString = String.Format("Skin{0}", i);
 
-                            modelDefinition.szModelTextureName.Add(configButes[type].ReadValue(sections.Key, szSkinString, "").Replace("\"", String.Empty));
+                                modelDefinition.szModelTextureName.Add(configButes[type].ReadValue(sections.Key, szSkinString, "").Replace("\"", String.Empty));
 
+                            }
+                            modelDefinition.FitTextureList();
                         }
-                        modelDefinition.FitTextureList();
+                        else
+                        {
+                            modelDefinition.szModelTextureName.Add(configButes[type].ReadValue(sections.Key, "HHSkin", "").Replace("\"", String.Empty));
+                        }
+
+                    }
+                    return modelDefinition;
+                }
+
+            }
+
+        }
+
+        if (type == ModelType.WeaponItem)
+        {
+            modelDefinition.modelType = type;
+            if (!configButes.ContainsKey(type))
+            {
+                IDATReader reader = (IDATReader)DatReader;
+
+                var nVersion = reader.GetVersion();
+
+                string szButeFile = String.Empty;
+
+                if (nVersion > 66)
+                {
+                    szButeFile = szProjectPath + "\\Attributes\\PickupButes.txt";
+                }
+                else
+                {
+                    szButeFile = szProjectPath + "\\Attributes\\Weapons.txt";
+                }
+
+
+                if (File.Exists(szButeFile))
+                {
+                    ini.Open(szButeFile);
+                    configButes.Add(type, ini); //stuff this away
+                }
+                else
+                {
+                    Debug.LogError("Could not find PickupButes.txt");
+                    return null;
+                }
+            }
+            
+            foreach (var sections in configButes[type].GetSections)
+            {
+
+                var test = sections.Value;
+
+                // check if keys has a name
+                if (sections.Value.ContainsKey("Name"))
+                {
+                    if (sections.Value["Name"].Replace("\"", "") != szName)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+
+                        string modelName = String.Empty;
+
+                        if (nVersion > 66)
+                            configButes[type].ReadValue(sections.Key, "Model", "1x1square.abc");
+                        else
+                            configButes[type].ReadValue(sections.Key, "HHModel", "1x1square.abc");
+
+
+
+                        if (!String.IsNullOrEmpty(modelName))
+                        {
+                            modelDefinition.szModelFileName = modelName.Replace("\"", "");
+                            modelDefinition.szModelFilePath = szProjectPath + "\\" + modelName.Replace("\"", "");
+                        }
+
+                        //get skins, could be up to 4, but not always defined.. FUN
+
+                        if (nVersion > 66)
+                        {
+                            for (int i = 0; i < 4; i++)
+                            {
+                                string szSkinString = String.Format("Skin{0}", i);
+
+                                modelDefinition.szModelTextureName.Add(configButes[type].ReadValue(sections.Key, szSkinString, "").Replace("\"", String.Empty));
+
+                            }
+                            modelDefinition.FitTextureList();
+                        }
+                        else
+                        {
+                            modelDefinition.szModelTextureName.Add(configButes[type].ReadValue(sections.Key, "HHSkin", "").Replace("\"", String.Empty));
+                        }
 
                     }
                     return modelDefinition;
@@ -370,6 +494,8 @@ public class Importer : MonoBehaviour
                     {
                         modelDefinition.bMoveToFloor = false;
                     }
+
+                    modelDefinition.bChromakey = configButes[type].ReadValue(sections.Key, "Chromakey", false);
 
                     return modelDefinition;
                 }

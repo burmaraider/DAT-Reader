@@ -7,6 +7,7 @@ using System;
 using LithFAQ;
 using System.Collections.Generic;
 using System.Data;
+using System.Security.Cryptography;
 
 public class ObjectProperties : MonoBehaviour
 {
@@ -112,7 +113,7 @@ public class ObjectProperties : MonoBehaviour
             if (values[i].GetType() == typeof(float))
             {
                 float f = (float)values[i];
-                ImGui.DragFloat(keys[i], ref f);
+                ImGui.DragFloat(keys[i], ref f, 1.0f, 0f);
 
                 if (f != (float)values[i])
                 {
@@ -127,11 +128,23 @@ public class ObjectProperties : MonoBehaviour
 
             if (values[i].GetType() == typeof(UInt32))
             {
-                float f = (int)((UInt32)values[i]);
-                ImGui.InputFloat(keys[i], ref f);
-                if (f != (int)((UInt32)values[i]))
+                byte[] number = BitConverter.GetBytes((UInt32)values[i]);
+
+                //convert to float
+                float fOriginal = BitConverter.ToSingle(number, 0);
+                float f = BitConverter.ToSingle(number, 0);
+
+                //float f = (int)((UInt32)values[i]);
+                ImGui.DragFloat(keys[i], ref f, 1, 0, 255);
+
+                byte[] newFloat = BitConverter.GetBytes(f);
+
+                UInt32 newInt = BitConverter.ToUInt32(newFloat);
+                
+
+                if (newInt != (UInt32)values[i])
                 {
-                    worldObjects.obj[nSelectedItem].options[keys[i]] = (UInt32)f;
+                    worldObjects.obj[nSelectedItem].options[keys[i]] = newInt; //cast back to Uint32
                 }
             }
 

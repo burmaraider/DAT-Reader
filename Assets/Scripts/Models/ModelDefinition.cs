@@ -12,7 +12,9 @@ public enum ModelType
     Character,
     Prop,
     BodyProp,
-    PropType
+    PropType,
+    WeaponItem,
+    GearItem
 }
 
 public class ModelDefinition
