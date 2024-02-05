@@ -4,6 +4,7 @@ using UnityEngine.Rendering;
 using UnityEngine.UI;
 using System.Drawing;
 using System;
+using LithFAQ;
 
 public class MainGui : MonoBehaviour
 {
@@ -12,6 +13,33 @@ public class MainGui : MonoBehaviour
     public Vector2 vHelpWindowSize = new Vector2(300, 300);
     public Vector2 vToggleOptionsSize = new Vector2(300, 300);
     public Texture2D imguiTexture;
+
+
+    // Some bools for controlling different windows
+    private bool bLoadLevelClicked = false;
+    private bool bClearLevelClicked = false;
+    private bool bQuitClicked = false;
+    private bool bShowHelp = true;
+    private bool bShowToggleOptions = true;
+    private bool bShowAboutWindow = false;
+    private bool bObjectViewer = false;
+    private bool bGameSelectWindow = false;
+
+    //Options
+    private float fAmbientSlider = 1.0f;
+    private bool bToggleObjects = true;
+    private bool bToggleBlockers = true;
+    private bool bToggleVolumes = true;
+    private bool bToggleBSP = true;
+    private bool bToggleShadows = false;
+
+
+    //on level loaded stuff
+    private bool bExportMenuOptions = false;
+    private bool bExportBSP = false;
+    private bool bExportSelectedMesh = false;
+    private bool bLevelLoaded = false;
+    private bool bExportAll = false;
 
     public void Start()
     {
@@ -29,6 +57,10 @@ public class MainGui : MonoBehaviour
         bToggleBSP = true;
         bToggleShadows = false;
         bObjectViewer = false;
+        bExportMenuOptions = false;
+        bLevelLoaded = false;
+        bExportAll = false;
+        bGameSelectWindow = false;
 
         var objectList = FindAnyObjectByType<ObjectList>();
         Destroy(objectList);
@@ -61,24 +93,11 @@ public class MainGui : MonoBehaviour
     {
         this.transform.gameObject.AddComponent<ObjectList>();
         this.transform.gameObject.AddComponent<ObjectProperties>();
+
+        bExportMenuOptions = true;
+        bLevelLoaded = true;
     }
 
-    // Some bools for controlling different windows
-    private bool bLoadLevelClicked = false;
-    private bool bClearLevelClicked = false;
-    private bool bQuitClicked = false;
-    private bool bShowHelp = true;
-    private bool bShowToggleOptions = true;
-    private bool bShowAboutWindow = false;
-    private bool bObjectViewer = false;
-
-    //Options
-    private float fAmbientSlider = 1.0f;
-    private bool bToggleObjects = true;
-    private bool bToggleBlockers = true;
-    private bool bToggleVolumes = true;
-    private bool bToggleBSP = true;
-    private bool bToggleShadows = false;
 
     // Controll everything from the function that subscribes to Layout events
     void OnLayout()
@@ -90,13 +109,29 @@ public class MainGui : MonoBehaviour
         if (bLoadLevelClicked)
         {
             bLoadLevelClicked = false;
-            UIActionManager.OnPreLoadLevel?.Invoke();
+            bGameSelectWindow = true;
+
         }
         if (bClearLevelClicked)
         {
             bClearLevelClicked = false;
             UIActionManager.OnPreClearLevel?.Invoke();
             DestroyImmediate(this.transform.gameObject.GetComponent<ObjectProperties>());
+        }
+        if(bExportBSP)
+        {
+            bExportBSP = false;
+            UIActionManager.OnExport?.Invoke();
+        }
+        if(bExportSelectedMesh)
+        {
+            bExportSelectedMesh = false;
+            UIActionManager.OnExportSelectedObject?.Invoke();
+        }
+        if(bExportAll)
+        {
+            bExportAll = false;
+            UIActionManager.OnExportAll?.Invoke();
         }
         if (bQuitClicked)
         {
@@ -115,6 +150,10 @@ public class MainGui : MonoBehaviour
         {
             ShowAboutWindow();
         }
+        if (bGameSelectWindow)
+        {
+            ShowGameSelectWindow();
+        }
 
         Camera.main.GetComponent<ObjectPicker>().ToggleBlockers(bToggleBlockers);
         Camera.main.GetComponent<ObjectPicker>().ToggleBSP(bToggleBSP);
@@ -122,6 +161,26 @@ public class MainGui : MonoBehaviour
         Camera.main.GetComponent<ObjectPicker>().ToggleVolumes(bToggleVolumes);
         Camera.main.GetComponent<ObjectPicker>().ToggleObjects(bToggleObjects);
         importer.gameObject.GetComponent<Controller>().ChangeAmbientLighting(fAmbientSlider);
+
+        ImGui.End();
+    }
+
+    private void ShowGameSelectWindow()
+    {
+        ImGui.SetNextWindowSize(new Vector2(350, 300));
+        ImGui.SetNextWindowPos(new Vector2(Screen.width / 2 - 175, Screen.height / 2 - 150));
+        ImGui.Begin("Select Game", ref bGameSelectWindow, ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse);
+
+        ImGui.TextWrapped("Please select the game the .DAT is from:");
+
+        ImGui.Combo("Game", ref importer.nSelectedGame, GlobalStuff.szGameNames, GlobalStuff.szGameNames.Length);
+
+        Vector2 buttonSize = new Vector2(ImGui.GetWindowContentRegionWidth(), ImGui.GetWindowHeight() - 80f);
+        if (ImGui.Button("Load .DAT", buttonSize))
+        {
+            bGameSelectWindow = false;
+            UIActionManager.OnPreLoadLevel?.Invoke();
+        }
 
         ImGui.End();
     }
@@ -186,8 +245,18 @@ public class MainGui : MonoBehaviour
         if (ImGui.BeginMenu("File"))
         {
             ImGui.MenuItem("Load Level", null, ref bLoadLevelClicked);
-            ImGui.MenuItem("Clear Level", null, ref bClearLevelClicked);
+            
+            if(bLevelLoaded)
+                ImGui.MenuItem("Clear Level", null, ref bClearLevelClicked);
             ImGui.Separator();
+            
+            if(bExportMenuOptions)
+            {
+                ImGui.MenuItem("Export BSP", null, ref bExportBSP);
+                ImGui.MenuItem("Export Selected Mesh", null, ref bExportSelectedMesh);
+                ImGui.MenuItem("Export All", null, ref bExportAll);
+                ImGui.Separator();
+            }
             ImGui.MenuItem("Quit", null, ref bQuitClicked);
             ImGui.EndMenu();
         }

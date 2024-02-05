@@ -17,4 +17,8 @@ public static class UIActionManager
     public static Action<float, string> OnChangeLightRadius;
 
     public static Action<string> OnSelectObjectIn3D;
+
+    public static Action OnExport;
+    public static Action OnExportSelectedObject;
+    public static Action OnExportAll;
 }

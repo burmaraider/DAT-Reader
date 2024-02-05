@@ -7,10 +7,10 @@ using System;
 using LithFAQ;
 using System.Collections.Generic;
 using System.Data;
+using System.Collections;
 
 public class ObjectList : MonoBehaviour
 {
-    // Some references to private controllers that manage health, movement, enemies etc.
     public Importer importer;
 
     public bool bShowObjectList = true;
@@ -44,12 +44,12 @@ public class ObjectList : MonoBehaviour
         //strip _obj off the end
         szName = szName.Replace("_obj", "");
 
-        if(szWorldObjectNameList.Count  > 0)
+        if (szWorldObjectNameList.Count > 0)
         {
             int i = 0;
             foreach (var szWorldObject in szWorldObjectNameList)
             {
-                if(szWorldObject.Equals(szName))
+                if (szWorldObject.Equals(szName))
                 {
                     nSelectedObject = i;
                 }
@@ -98,11 +98,31 @@ public class ObjectList : MonoBehaviour
                 Vector3 direction = Camera.main.transform.forward; // Get the direction the camera is facing
                 Vector3 finalPos = newPos - direction * 192; // Calculate the final position
 
-                Camera.main.transform.position = finalPos * 0.01f;
+                StartCoroutine(MoveCamera(finalPos * 0.01f));
             }
         }
 
     }
+
+    IEnumerator MoveCamera(Vector3 finalPos)
+    {
+        float duration = 0.2f; // Duration of the transition
+        float elapsedTime = 0.0f;
+        Vector3 startingPos = Camera.main.transform.position;
+
+        while (elapsedTime < duration)
+        {
+            float t = elapsedTime / duration; // Normalized time (0 to 1)
+            t = t * t * (3f - 2f * t); // Apply SmoothStep
+
+            Camera.main.transform.position = Vector3.Lerp(startingPos, finalPos, t);
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        Camera.main.transform.position = finalPos;
+    }
+
 
     private void GetWorldObjects()
     {

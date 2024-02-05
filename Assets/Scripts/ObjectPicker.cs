@@ -20,7 +20,7 @@ public class ObjectPicker : MonoBehaviour
     {
         if (EventSystem.current.IsPointerOverGameObject() == false)
         {
-            if ( Input.GetMouseButtonDown (0))
+            if ( Input.GetMouseButtonDown (0) && Input.GetKey(KeyCode.LeftShift))
             { 
                 if(selectedObject != null)
                 {
@@ -29,9 +29,23 @@ public class ObjectPicker : MonoBehaviour
                     selectionBox.transform.localScale = new Vector3(0, 0, 0);
                 }
 
+                //raycast all
+                Ray curRay = Camera.main.ScreenPointToRay(Input.mousePosition);
+                RaycastHit[] hits;
+                hits = Physics.RaycastAll(curRay, 100.0f);
+
+                System.Array.Sort(hits, delegate (RaycastHit x, RaycastHit y) { return x.distance.CompareTo(y.distance); });
+
+                foreach (var item in hits)
+                {
+                    Debug.Log(item.transform.name);
+                }
+
+
+
                 RaycastHit hit; 
                 Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition); 
-                if ( Physics.Raycast (ray,out hit,10000.0f)) 
+                if ( Physics.Raycast(ray,out hit,10000.0f)) 
                 {
                     if(hit.transform.name != "PhysicsBSP")
                     {
