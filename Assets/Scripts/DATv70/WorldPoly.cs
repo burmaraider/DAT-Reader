@@ -6,6 +6,8 @@ using System.IO;
 using static LithFAQ.LTTypes;
 using static LithFAQ.LTUtils;
 
+
+
 public class WorldPoly
 {
     public long m_nIndexAndNumVerts;
@@ -141,6 +143,41 @@ public class WorldPoly
         FillRelVerts();  
     }
 
+    public void ReadPoly56(ref BinaryReader b)
+    {
+        //Debug.Log("Position is: " + b.BaseStream.Position + "\n");
+
+        m_nLightmapWidth = b.ReadInt16();
+        m_nLightmapHeight = b.ReadInt16();
+
+        b.BaseStream.Position += 8; //skip two unknown floats
+
+
+        m_nSurface = b.ReadInt16();
+        m_nPlane = b.ReadInt16();
+
+
+
+        int verts = GetNumVertices();
+        m_aVertexColorList = new List<VertexColor>();
+        for (int t = 0; t < verts; t++)
+        {
+            VertexColor _vertexColors = new VertexColor();
+            _vertexColors.nVerts = b.ReadInt16();
+            _vertexColors.red = b.ReadByte();
+            _vertexColors.green = b.ReadByte();
+            _vertexColors.blue = b.ReadByte();
+            m_aVertexColorList.Add(_vertexColors);
+        }
+
+        m_O = ReadLTVector(ref b);
+        m_P = ReadLTVector(ref b);
+        m_Q = ReadLTVector(ref b);
+
+        b.BaseStream.Position -= 36;
+        FillRelVerts();
+    }
+
     public int GetNumVertices()
     {
         return (int)m_nIndexAndNumVerts & 0xFF;
@@ -160,4 +197,5 @@ public class WorldPoly
     {
         return pWorldBsp.m_pSurfaces[m_nSurface];
     }
+
 }

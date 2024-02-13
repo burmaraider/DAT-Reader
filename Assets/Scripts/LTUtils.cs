@@ -35,6 +35,7 @@ namespace LithFAQ
         NOLF2,
         TRON,
         SHOGO,
+        BLOOD2,
         KISS,
         CONTRACTJACK,
         DIEHARD,
@@ -48,6 +49,7 @@ namespace LithFAQ
             "No One Lives Forever 2",
             "TRON 2.0",
             "Shogo: Mobile Armor Division",
+            "Blood 2: The Chosen",
             "KISS Psycho Circus",
             "Contract Jack",
             "Die Hard: Nakatomi Plaza"

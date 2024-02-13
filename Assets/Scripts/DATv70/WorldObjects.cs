@@ -58,7 +58,7 @@ public class DiskRelVert
 
 public class Leafs
 {
-    public int m_nNumLeafLists;
+    public ushort m_nNumLeafLists;
     public Int16 m_nLeafListIndex;
     public List<LeafList> m_pLeafLists = new List<LeafList>();
 
@@ -103,6 +103,12 @@ public class WorldSurface
 public class WorldVertex
 {
     public LTVector m_vData;
+}
+
+public class WVertex
+{
+    public byte nCount;
+    public byte nExtra;
 }
 
 public class WorldModelList

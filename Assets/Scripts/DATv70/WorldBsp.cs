@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using UnityEngine;
 using static LithFAQ.LTTypes;
 using static LithFAQ.LTUtils;
 
@@ -8,23 +9,23 @@ public class WorldBsp
 {
     public Int16 m_nWorldInfoFlags;
     public String m_szWorldName;
-    public int       m_nPoints;    
-    public int       m_nPlanes;      
-    public int       m_nSurfaces;
-    public int    m_nUserPortals;
-    public int       m_nPolies;
-    public int       m_nLeafs; 
-    public int       m_nVerts;
+    public int m_nPoints;
+    public int m_nPlanes;
+    public int m_nSurfaces;
+    public int m_nUserPortals;
+    public int m_nPolies;
+    public int m_nLeafs;
+    public int m_nVerts;
     public int m_nTotalVisListSize;
-    public int      m_nLeafLists;
-    public int       m_nNodes;
-    public int       m_nSections;
-    public LTVector       m_vMinBox;
-    public LTVector       m_vMaxBox;
+    public int m_nLeafLists;
+    public int m_nNodes;
+    public int m_nSections;
+    public LTVector m_vMinBox;
+    public LTVector m_vMaxBox;
     public LTVector m_vWorldTranslation;
     public int m_nNamesLen;
     public int m_nTextures;
-    public List<String> m_aszTextureNames = new List<String>();                               
+    public List<String> m_aszTextureNames = new List<String>();
     public List<WorldPoly> m_pPolies = new List<WorldPoly>();
     public List<WorldPlane> m_pPlanes = new List<WorldPlane>();
     public List<WorldSurface> m_pSurfaces = new List<WorldSurface>();
@@ -34,9 +35,13 @@ public class WorldBsp
     public List<object> m_pUserPortals = new List<object>();
     public List<object> m_pPBlockTable = new List<object>();
 
+
+    //shogo stuff
+    public List<WVertex> wVertices = new List<WVertex>();
+
     public String WorldName
     {
-        get{return m_szWorldName;}
+        get { return m_szWorldName; }
     }
 
     public int datVersion;
@@ -46,83 +51,269 @@ public class WorldBsp
         Int16 nNameLen = 0;
 
         m_nWorldInfoFlags = (short)b.ReadInt32();
-        dwUnknown = b.ReadInt32();
-        nNameLen = b.ReadInt16();
-        m_szWorldName = ReadString(nNameLen, ref b);
 
-        if(nNameLen == 0 || nNameLen > 255)
+        if (datVersion == 56)
         {
-            String errString = String.Format("Name Length was: {0}\n Name was: {1}", nNameLen, m_szWorldName);
-            throw new Exception(errString);
+            nNameLen = b.ReadInt16();
+            m_szWorldName = ReadString(nNameLen, ref b);
+
+            b.BaseStream.Position += 4; //skip next position
+
+            m_nPoints = b.ReadInt32();
+            m_nPlanes = b.ReadInt32();
+            m_nSurfaces = b.ReadInt32();
+            m_nUserPortals = b.ReadInt32();
+            m_nPolies = b.ReadInt32();
+            m_nLeafs = b.ReadInt32();
+            m_nVerts = b.ReadInt32();
+            m_nTotalVisListSize = b.ReadInt32();
+            m_nLeafLists = b.ReadInt32();
+            m_nNodes = b.ReadInt32();
+            m_nSections = b.ReadInt32();
+            m_vMinBox = ReadLTVector(ref b);
+            m_vMaxBox = ReadLTVector(ref b);
+            m_vWorldTranslation = ReadLTVector(ref b);
+            m_nNamesLen = b.ReadInt32();
+            m_nTextures = b.ReadInt32();
+            ReadTextures(ref b);
+            ReadVertices(ref b);
+
+            //ReadLeafs(b);
+            // So this is odd, if I use the ReadLeafs function the binary reader position automatically increases by itself.
+            // So we inline it here, literally copy pasted.
+            if (m_nLeafs > 0)
+            {
+                for (int i = 0; i < m_nLeafs; i++)
+                {
+                    Leafs pLeaf = new Leafs();
+
+
+                    pLeaf.m_nNumLeafLists = b.ReadUInt16();
+
+                    if (pLeaf.m_nNumLeafLists == 0xFFFF)
+                    {
+                        pLeaf.m_nLeafListIndex = b.ReadInt16();
+                    }
+
+                    else if (pLeaf.m_nNumLeafLists > 0)
+                    {
+                        for (int t = 0; t < pLeaf.m_nNumLeafLists; t++)
+                        {
+                            LeafList pLeafList = new LeafList();
+
+                            pLeafList.m_nPortalId = b.ReadInt16();
+                            pLeafList.m_nSize = b.ReadInt16();
+                            Array.Resize(ref pLeafList.m_pContents, pLeafList.m_nSize);
+                            pLeafList.m_pContents = b.ReadBytes(pLeafList.m_nSize);
+
+                            pLeaf.m_pLeafLists.Add(pLeafList);
+                        }
+                    }
+
+                    if (datVersion == 56)
+                    {
+                        pLeaf.m_nPoliesCount = b.ReadUInt16();
+                    }
+                    else
+                    {
+                        pLeaf.m_nPoliesCount = b.ReadInt32();
+                    }
+
+                    if (pLeaf.m_nPoliesCount > 0)
+                    {
+                        Array.Resize(ref pLeaf.m_pPolies, pLeaf.m_nPoliesCount * 4);
+
+                        for (int y = 0; y < pLeaf.m_pPolies.Length; y++)
+                        {
+                            if (datVersion == 56)
+                            {
+                                pLeaf.m_pPolies[y] = b.ReadByte();
+                            }
+                            else
+                            {
+                                pLeaf.m_pPolies[y] = b.ReadInt16();
+                            }
+                        }
+                    }
+
+                    pLeaf.m_nCardinal1 = b.ReadInt32();
+
+                    m_pLeafs.Add(pLeaf);
+                }
+            }
+
+            ReadPlanes(ref b);
+            ReadSurfaces56(ref b);
+
+            //read polygons
+
+            for (int i = 0; i < m_nPolies; i++)
+            {
+                WorldPoly poly = new WorldPoly();
+                poly.m_aRelDiskVerts = new List<DiskRelVert>();
+                poly.m_aVertexColorList = new List<VertexColor>();
+                poly.m_nLightmapWidth = b.ReadInt16();
+                poly.m_nLightmapHeight = b.ReadInt16();
+                b.BaseStream.Position += 8; //skip the 2 unknown floats
+                poly.m_nSurface = b.ReadInt32();
+
+                //m_aRelDiskVerts
+                for (int j = 0; j < wVertices[i].nCount + wVertices[i].nExtra; j++)
+                {
+                    DiskRelVert diskRelVert = new DiskRelVert();
+                    diskRelVert.nRelVerts = b.ReadInt16();
+                    b.BaseStream.Position += 3;//skip vertex colors
+                    poly.m_aRelDiskVerts.Add(diskRelVert);
+                }
+                m_pPolies.Add(poly);
+            }
+
+            //time to read the nodes...skip 34 bytes
+            b.BaseStream.Position += m_nNodes * 34;
+
+            //Portals, we don't use them, skip over.
+            if (m_nUserPortals > 0)
+            {
+                for (int i = 0; i < m_nUserPortals; i++)
+                {
+                    short nPortalName = b.ReadInt16();
+                    b.BaseStream.Position += nPortalName; //skip the name
+                    _ = b.ReadInt32(); //skip the unknown
+                    _ = b.ReadUInt16(); //skip the unknown
+                    _ = ReadLTVector(ref b); //skip the unknown vector
+                    _ = ReadLTVector(ref b); //skip the unknown vector
+                }
+            }
+
+            ReadPoints(ref b);
+
+            //pblocktable skip this
+            int unknown1 = b.ReadInt32();
+            int unknown2 = b.ReadInt32();
+            int unknown3 = b.ReadInt32();
+
+            int size = unknown1 * unknown2 * unknown3;
+
+            b.BaseStream.Position += 24; //skip the unknown vectors
+
+            for (int i = 0; i < size; i++)
+            {
+                short blockEntrySize = b.ReadInt16();
+                _ = b.ReadInt16();
+
+                //skip the block conents
+                b.BaseStream.Position += blockEntrySize * 6;
+            }
+
+            b.BaseStream.Position += 8;
+
+            //Polygon center list
+            foreach (var poly in m_pPolies)
+            {
+                poly.m_vCenter = ReadLTVector(ref b);
+            }
+
+            int lightmapDataCount = b.ReadInt32();
+
+            b.BaseStream.Position += lightmapDataCount; //skip lightmaps
+
+            return 1;
         }
 
-        m_nPoints = b.ReadInt32();
-        m_nPlanes = b.ReadInt32();
-        m_nSurfaces = b.ReadInt32();
 
-        m_nUserPortals = b.ReadInt32();
-        m_nPolies = b.ReadInt32();
-        m_nLeafs = b.ReadInt32();
-        m_nVerts = b.ReadInt32();
-        m_nTotalVisListSize = b.ReadInt32();
-        m_nLeafLists = b.ReadInt32();
-        m_nNodes = b.ReadInt32();
-
-        dwUnknown2 = b.ReadInt32();
-        dwUnknown3 = b.ReadInt32();
-
-        m_vMinBox = ReadLTVector(ref b);
-        m_vMaxBox = ReadLTVector(ref b);
-        m_vWorldTranslation = ReadLTVector(ref b);
-
-        m_nNamesLen = b.ReadInt32();
-        m_nTextures = b.ReadInt32();
-
-        ReadTextures(ref b);
-        ReadPolies1(ref b);
-        ReadLeafs(ref b);
-        ReadPlanes(ref b);
-        if(datVersion == 70)
-            ReadSurfaces70(ref b);
-        else if(datVersion == 66)
-            ReadSurfaces66(ref b);
-        if(datVersion == 70)
-            ReadPoints(ref b);
-        ReadPolies2(ref b);
-        if(datVersion == 66)
+        else
         {
-            b.BaseStream.Position += m_nNodes * 14;
-            ReadPoints(ref b);
+            dwUnknown = b.ReadInt32();
+            nNameLen = b.ReadInt16();
+            m_szWorldName = ReadString(nNameLen, ref b);
+
+            if (nNameLen == 0 || nNameLen > 255)
+            {
+                String errString = String.Format("Name Length was: {0}\n Name was: {1}", nNameLen, m_szWorldName);
+                throw new Exception(errString);
+            }
+
+            m_nPoints = b.ReadInt32();
+            m_nPlanes = b.ReadInt32();
+            m_nSurfaces = b.ReadInt32();
+
+            m_nUserPortals = b.ReadInt32();
+            m_nPolies = b.ReadInt32();
+            m_nLeafs = b.ReadInt32();
+            m_nVerts = b.ReadInt32();
+            m_nTotalVisListSize = b.ReadInt32();
+            m_nLeafLists = b.ReadInt32();
+            m_nNodes = b.ReadInt32();
+
+            dwUnknown2 = b.ReadInt32();
+            dwUnknown3 = b.ReadInt32();
+
+            m_vMinBox = ReadLTVector(ref b);
+            m_vMaxBox = ReadLTVector(ref b);
+            m_vWorldTranslation = ReadLTVector(ref b);
+
+            m_nNamesLen = b.ReadInt32();
+            m_nTextures = b.ReadInt32();
+
+            ReadTextures(ref b);
+            ReadPolies1(ref b);
+            ReadLeafs(b);
+            ReadPlanes(ref b);
+            if (datVersion == 70)
+                ReadSurfaces70(ref b);
+            else if (datVersion == 66)
+                ReadSurfaces66(ref b);
+            if (datVersion == 70)
+                ReadPoints(ref b);
+            ReadPolies2(ref b);
+            if (datVersion == 66)
+            {
+                b.BaseStream.Position += m_nNodes * 14;
+                ReadPoints(ref b);
+            }
+            return 1;
         }
-        return 1;
+    }
+
+
+
+    private void ReadVertices(ref BinaryReader b)
+    {
+        for (int i = 0; i < m_nNodes; i++)
+        {
+            WVertex tempVert = new WVertex();
+            tempVert.nCount = b.ReadByte();
+            tempVert.nExtra = b.ReadByte();
+            wVertices.Add(tempVert);
+        }
     }
 
     public void ReadTextures(ref BinaryReader b)
     {
-        for(int i = 0; i < m_nTextures; i++)
+        for (int i = 0; i < m_nTextures; i++)
         {
             byte[] tempString = new byte[1];
-            while(b.PeekChar() != 0)
+            while (b.PeekChar() != 0)
             {
-                tempString[tempString.Length-1] = b.ReadByte();
+                tempString[tempString.Length - 1] = b.ReadByte();
                 Array.Resize(ref tempString, tempString.Length + 1);
             }
-            Array.Resize(ref tempString, tempString.Length-1); // get rid of the 0x0
+            Array.Resize(ref tempString, tempString.Length - 1); // get rid of the 0x0
             m_aszTextureNames.Add(System.Text.Encoding.ASCII.GetString(tempString)); //add it to the list!
             b.BaseStream.Position++;
         }
-        
+
     }
 
     public void ReadPolies1(ref BinaryReader b)
     {
-        for(int i = 0; i < m_nPolies; i++)
+        for (int i = 0; i < m_nPolies; i++)
         {
             WorldPoly pPoly = new WorldPoly();
-            
+
             Int16 nVertices = b.ReadInt16();
-            byte hi = (byte)(nVertices>>8);
-            byte lo =  (byte)(nVertices&0xff);
+            byte hi = (byte)(nVertices >> 8);
+            byte lo = (byte)(nVertices & 0xff);
 
             pPoly.m_nIndexAndNumVerts = i;
             pPoly.m_nLoVerts = lo;
@@ -130,30 +321,31 @@ public class WorldBsp
 
             nVertices = (short)(pPoly.m_nLoVerts + pPoly.m_nHiVerts);
 
-            pPoly.m_nIndexAndNumVerts = unchecked((pPoly.m_nIndexAndNumVerts & 0xFFFFFF00) | (nVertices & 0xFF) );
+            pPoly.m_nIndexAndNumVerts = unchecked((pPoly.m_nIndexAndNumVerts & 0xFFFFFF00) | (nVertices & 0xFF));
 
             m_pPolies.Add(pPoly);
         }
     }
 
-    public void ReadLeafs(ref BinaryReader b)
+    public void ReadLeafs(BinaryReader b)
     {
-        if(m_nLeafs > 0)
+        if (m_nLeafs > 0)
         {
-             for(int i = 0; i < m_nLeafs; i++)
-             {
+            for (int i = 0; i < m_nLeafs; i++)
+            {
                 Leafs pLeaf = new Leafs();
 
-                pLeaf.m_nNumLeafLists = b.ReadInt16();
 
-                if(pLeaf.m_nNumLeafLists == 0xFFFF)
+                pLeaf.m_nNumLeafLists = b.ReadUInt16();
+
+                if (pLeaf.m_nNumLeafLists == 0xFFFF)
                 {
                     pLeaf.m_nLeafListIndex = b.ReadInt16();
                 }
 
-                else if(pLeaf.m_nNumLeafLists > 0)
+                else if (pLeaf.m_nNumLeafLists > 0)
                 {
-                    for(int t = 0; t < pLeaf.m_nNumLeafLists; t++)
+                    for (int t = 0; t < pLeaf.m_nNumLeafLists; t++)
                     {
                         LeafList pLeafList = new LeafList();
 
@@ -166,29 +358,44 @@ public class WorldBsp
                     }
                 }
 
-                pLeaf.m_nPoliesCount = b.ReadInt32();
-                if(pLeaf.m_nPoliesCount > 0)
+                if (datVersion == 56)
+                {
+                    pLeaf.m_nPoliesCount = b.ReadUInt16();
+                }
+                else
+                {
+                    pLeaf.m_nPoliesCount = b.ReadInt32();
+                }
+
+                if (pLeaf.m_nPoliesCount > 0)
                 {
                     Array.Resize(ref pLeaf.m_pPolies, pLeaf.m_nPoliesCount * 4);
 
-                    for(int y = 0; y < pLeaf.m_pPolies.Length; y++)
+                    for (int y = 0; y < pLeaf.m_pPolies.Length; y++)
                     {
-                        pLeaf.m_pPolies[y] = b.ReadInt16();
+                        if (datVersion == 56)
+                        {
+                            pLeaf.m_pPolies[y] = b.ReadByte();
+                        }
+                        else
+                        {
+                            pLeaf.m_pPolies[y] = b.ReadInt16();
+                        }
                     }
                 }
 
                 pLeaf.m_nCardinal1 = b.ReadInt32();
 
                 m_pLeafs.Add(pLeaf);
-             }
+            }
         }
     }
 
     public void ReadPlanes(ref BinaryReader b)
     {
-        if(m_nPlanes > 0)
+        if (m_nPlanes > 0)
         {
-            for(int i =0; i< m_nPlanes; i++)
+            for (int i = 0; i < m_nPlanes; i++)
             {
                 WorldPlane pPlane = new WorldPlane();
                 pPlane.m_vNormal = ReadLTVector(ref b);
@@ -200,9 +407,9 @@ public class WorldBsp
 
     public void ReadSurfaces70(ref BinaryReader b)
     {
-        if(m_nSurfaces > 0)
+        if (m_nSurfaces > 0)
         {
-            for(int i =0; i < m_nSurfaces; i++)
+            for (int i = 0; i < m_nSurfaces; i++)
             {
                 WorldSurface pSurface = new WorldSurface();
                 pSurface.m_fUV1 = ReadLTVector(ref b);
@@ -217,22 +424,22 @@ public class WorldBsp
                 pSurface.m_nUnknown4 = b.ReadByte();
                 pSurface.m_nUseEffect = b.ReadByte();
 
-                if(pSurface.m_nUseEffect > 0)
+                if (pSurface.m_nUseEffect > 0)
                 {
                     Int16 nLen = b.ReadInt16();
-                    if(nLen > 0)
+                    if (nLen > 0)
                     {
                         pSurface.m_szEffect = ReadString(nLen, ref b);
                     }
                     nLen = b.ReadInt16();
-                    if(nLen > 0)
+                    if (nLen > 0)
                     {
                         pSurface.m_szEffectParam = ReadString(nLen, ref b);
                     }
                 }
 
                 pSurface.m_nTextureFlags = b.ReadInt16();
-                
+
                 m_pSurfaces.Add(pSurface);
             }
         }
@@ -240,17 +447,16 @@ public class WorldBsp
 
     public void ReadSurfaces66(ref BinaryReader b)
     {
-        if(m_nSurfaces > 0)
+        if (m_nSurfaces > 0)
         {
-            for(int i =0; i < m_nSurfaces; i++)
+            for (int i = 0; i < m_nSurfaces; i++)
             {
                 WorldSurface pSurface = new WorldSurface();
                 pSurface.m_fUV1 = ReadLTVector(ref b);
                 pSurface.m_fUV2 = ReadLTVector(ref b);
                 pSurface.m_fUV3 = ReadLTVector(ref b);
-                //extra stuff in .dat 66
                 pSurface.m_nTexture = b.ReadInt16();
-                b.BaseStream.Position +=4;
+                b.BaseStream.Position += 4;//extra stuff in .dat 66
                 pSurface.m_nFlags = b.ReadInt32();
                 pSurface.m_nUnknown1 = b.ReadByte();
                 pSurface.m_nUnknown2 = b.ReadByte();
@@ -258,22 +464,63 @@ public class WorldBsp
                 pSurface.m_nUnknown4 = b.ReadByte();
                 pSurface.m_nUseEffect = b.ReadByte();
 
-                if(pSurface.m_nUseEffect > 0)
+                if (pSurface.m_nUseEffect > 0)
                 {
                     Int16 nLen = b.ReadInt16();
-                    if(nLen > 0)
+                    if (nLen > 0)
                     {
                         pSurface.m_szEffect = ReadString(nLen, ref b);
                     }
                     nLen = b.ReadInt16();
-                    if(nLen > 0)
+                    if (nLen > 0)
                     {
                         pSurface.m_szEffectParam = ReadString(nLen, ref b);
                     }
                 }
 
                 pSurface.m_nTextureFlags = b.ReadInt16();
-                
+
+                m_pSurfaces.Add(pSurface);
+            }
+        }
+    }
+
+    public void ReadSurfaces56(ref BinaryReader b)
+    {
+        if (m_nSurfaces > 0)
+        {
+            for (int i = 0; i < m_nSurfaces; i++)
+            {
+                WorldSurface pSurface = new WorldSurface();
+                pSurface.m_fUV1 = ReadLTVector(ref b);
+                pSurface.m_fUV2 = ReadLTVector(ref b);
+                pSurface.m_fUV3 = ReadLTVector(ref b);
+                b.BaseStream.Position += 36; //skip the unknown vectors
+                pSurface.m_nTexture = b.ReadInt16();
+                _ = b.ReadInt32(); // plane index
+                pSurface.m_nFlags = b.ReadInt32();
+                pSurface.m_nUnknown1 = b.ReadByte();
+                pSurface.m_nUnknown2 = b.ReadByte();
+                pSurface.m_nUnknown3 = b.ReadByte();
+                pSurface.m_nUnknown4 = b.ReadByte();
+                pSurface.m_nUseEffect = b.ReadByte();
+
+                if (pSurface.m_nUseEffect > 0) //this might change
+                {
+                    Int16 nLen = b.ReadInt16();
+                    if (nLen > 0)
+                    {
+                        pSurface.m_szEffect = ReadString(nLen, ref b);
+                    }
+                    nLen = b.ReadInt16();
+                    if (nLen > 0)
+                    {
+                        pSurface.m_szEffectParam = ReadString(nLen, ref b);
+                    }
+                }
+
+                pSurface.m_nTextureFlags = b.ReadInt16();
+
                 m_pSurfaces.Add(pSurface);
             }
         }
@@ -281,13 +528,13 @@ public class WorldBsp
 
     public void ReadPoints(ref BinaryReader b)
     {
-        if(m_nPoints > 0)
+        if (m_nPoints > 0)
         {
-            for(int i = 0; i < m_nPoints; i++)
+            for (int i = 0; i < m_nPoints; i++)
             {
                 WorldVertex pVertex = new WorldVertex();
                 pVertex.m_vData = ReadLTVector(ref b);
-                if(datVersion == 66) // skip the normals, unity does a good enough job
+                if (datVersion == 66) // skip the normals, unity does a good enough job
                     b.BaseStream.Position += 12;
                 m_pPoints.Add(pVertex);
             }
@@ -296,17 +543,12 @@ public class WorldBsp
 
     public void ReadPolies2(ref BinaryReader b)
     {
-        for(int i = 0; i < m_nPolies; i++)
+        for (int i = 0; i < m_nPolies; i++)
         {
-            if(datVersion == 70)
+            if (datVersion == 70)
                 m_pPolies[i].ReadPoly70(ref b);
-            if(datVersion == 66)
+            if (datVersion == 66)
                 m_pPolies[i].ReadPoly66(ref b);
         }
-    }
-
-    public void ReadNodes(ref BinaryReader b)
-    {
-
     }
 }

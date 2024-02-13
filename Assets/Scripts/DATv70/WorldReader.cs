@@ -34,8 +34,15 @@ public class WorldReader
     public void ReadHeader(ref BinaryReader b)
     {
         WorldHeader.nVersion = b.ReadInt32();
+
         WorldHeader.dwObjectDataPos = b.ReadInt32();
         WorldHeader.dwRenderDataPos = b.ReadInt32();
+        
+        if (WorldHeader.nVersion == 56)
+        {
+            return;
+        }
+        
         WorldHeader.dwDummy1 = b.ReadInt32();
         WorldHeader.dwDummy2 = b.ReadInt32();
         WorldHeader.dwDummy3 = b.ReadInt32();
@@ -51,6 +58,12 @@ public class WorldReader
         int nLen = b.ReadInt32();
         if(nLen > 0)
             WorldProperties = ReadString(nLen, ref b);
+
+        if (WorldHeader.nVersion == 56) //SHOGO
+        {
+            b.BaseStream.Position += 8; // skip some padding
+            return;
+        }
 
         WorldExtents.fLMGridSize = b.ReadSingle();
         WorldExtents.vExtentsMin = ReadLTVector(ref b);

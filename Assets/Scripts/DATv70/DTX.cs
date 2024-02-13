@@ -1,11 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 public static class DTX
 {
     public static int identElement = 2;
+
+    public static int DTX1 = -2;
+    public static int DTX15 = -3;
+    public static int DTX2 = -5;
+	
 
     [Flags]
     public enum DTXFlags
@@ -59,6 +65,14 @@ public static class DTX
         public int engineWidth;
         public int engineHeight;
     }
+
+    public struct DTXColor
+    {
+        public byte a;
+        public byte r;
+        public byte g;
+        public byte b;
+    }
     
     public enum DTXReturn
     {
@@ -99,8 +113,55 @@ public static class DTX
 
         DTX.DTXHeader header = ReadDTXHeader(b);
 
-        b.BaseStream.Position = 164; // Jump to texture data, ignore command strings (always 128 bytes)
-        byte[] texArray = b.ReadBytes((int)b.BaseStream.Length - 164);
+        byte[] texArray = { 0x00 };
+
+        if (header.m_Version == DTX1)
+        {
+            byte[] pixelArray = new byte[header.m_BaseWidth * header.m_BaseHeight];
+            b.BaseStream.Position += 8; // Jump to color section
+
+            // Color section always has 256 entries
+            DTXColor[] aColors = new DTXColor[256];
+
+            int structSize = Marshal.SizeOf<DTXColor>();
+            byte[] colorBytes = new byte[structSize * 256];
+            b.Read(colorBytes, 0, colorBytes.Length);
+
+            GCHandle handle = GCHandle.Alloc(aColors, GCHandleType.Pinned);
+            try
+            {
+                Marshal.Copy(colorBytes, 0, handle.AddrOfPinnedObject(), colorBytes.Length);
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            // Read the first mipmap header.m_BaseWidth x header.m_BaseHeight into pixelArray
+            b.Read(pixelArray, 0, header.m_BaseWidth * header.m_BaseHeight);
+
+            texArray = new byte[header.m_BaseWidth * header.m_BaseHeight * 4]; //argb -> bgra
+
+            for (int y = 0; y < header.m_BaseHeight; y++)
+            {
+                for (int x = 0; x < header.m_BaseWidth; x++)
+                {
+                    int index = y * header.m_BaseWidth + x;
+                    DTXColor color = aColors[pixelArray[index]];
+                    int texIndex = index * 4;
+                    texArray[texIndex] = color.b;
+                    texArray[texIndex + 1] = color.g;
+                    texArray[texIndex + 2] = color.r;
+                    texArray[texIndex + 3] = color.a;
+                }
+            }
+        }
+        else
+        {
+            b.BaseStream.Position = 164; // Jump to texture data, ignore command strings (always 128 bytes)
+            texArray = b.ReadBytes((int)b.BaseStream.Length - 164);
+        }
+
         b.Close();
 
         TextureFormat textureFormat = GetTextureFormat(header.m_Extra[identElement]);
@@ -114,7 +175,10 @@ public static class DTX
             engineHeight = header.m_BaseHeight
         };
 
-        ApplyMipMapOffset(header, ref texInfo);
+        if (header.m_Version == DTX2)
+        {
+            ApplyMipMapOffset(header, ref texInfo);
+        }
 
         //do we need to apply fullbright?
         if ((header.m_IFlags & (int)DTXFlags.FULLBRIGHT) != 0)
@@ -192,8 +256,17 @@ public static class DTX
             textureFormat = TextureFormat.DXT5;
  
         texture2D = new Texture2D(header.m_BaseWidth, header.m_BaseHeight, textureFormat, false);
-        texture2D.LoadRawTextureData(texArray);
-        texture2D.Apply();
+
+        try
+        {
+            texture2D.LoadRawTextureData(texArray);
+            texture2D.Apply();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+            return null;
+        }
         return texture2D;
     }
 

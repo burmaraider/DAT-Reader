@@ -134,6 +134,10 @@ public class ObjectList : MonoBehaviour
 
                 var temp = reader.GetWorldObjects();
 
+                if (temp == null || temp.obj == null)
+                {
+                    return;
+                }
                 foreach (var item in temp.obj)
                 {
                     szWorldObjectNameList.Add(item.options["Name"].ToString());

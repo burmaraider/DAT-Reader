@@ -156,7 +156,9 @@ public class ABCModelReader : MonoBehaviour
                     nVersion = reader.ReadInt32();
                     if (nVersion < 9 || nVersion > 13)
                     {
-                        throw new Exception($"Unsupported file version ({nVersion}).");
+                        Debug.LogError($"Unsupported file version ({nVersion}).");
+                        return null;
+                        //throw new Exception($"Unsupported file version ({nVersion}).");
                     }
                     model.Version = nVersion;
                     reader.BaseStream.Seek(8, SeekOrigin.Current);
