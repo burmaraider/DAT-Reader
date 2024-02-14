@@ -294,32 +294,25 @@ namespace LithFAQ
                                 continue;
                             }
                             var twm = possibleTWM.GetComponent<TranslucentWorldModel>();
-                            if (twm)
+                            if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT)
                             {
-                                if (twm.bChromakey || (tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT)
+                                //try to find already existing material
+                                if (importer.dtxMaterialList.materials.ContainsKey(matReference.name + "_Chromakey"))
                                 {
-                                    //try to find already existing material
-                                    if (importer.dtxMaterialList.materials.ContainsKey(matReference.name + "_Chromakey"))
-                                    {
-                                        matReference = importer.dtxMaterialList.materials[matReference.name + "_Chromakey"];
-                                    }
-                                    else
-                                    {
-                                        //copy material from matReference to a new
-                                        Material mat = new Material(Shader.Find("Shader Graphs/Lithtech Vertex Transparent"));
-                                        mat.name = matReference.name + "_Chromakey";
-                                        mat.mainTexture = matReference.mainTexture;
-                                        mat.SetInt("_Chromakey", 1);
-                                        matReference = mat;
-                                        AddMaterialToMaterialDictionary(mat.name, mat, importer.dtxMaterialList);
-                                    }
+                                    matReference = importer.dtxMaterialList.materials[matReference.name + "_Chromakey"];
+                                }
+                                else
+                                {
+                                    //copy material from matReference to a new
+                                    Material mat = new Material(Shader.Find("Shader Graphs/Lithtech Vertex Transparent"));
+                                    mat.name = matReference.name + "_Chromakey";
+                                    mat.mainTexture = matReference.mainTexture;
+                                    mat.SetInt("_Chromakey", 1);
+                                    matReference = mat;
+                                    AddMaterialToMaterialDictionary(mat.name, mat, importer.dtxMaterialList);
                                 }
 
                                 if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE)
-                                {
-                                    mainObject.tag = "Blocker";
-                                }
-                                if (!twm.bVisible)
                                 {
                                     mainObject.tag = "Blocker";
                                 }

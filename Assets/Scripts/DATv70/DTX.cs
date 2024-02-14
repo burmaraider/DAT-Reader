@@ -18,6 +18,7 @@ public static class DTX
     {
         FULLBRIGHT = 0x01,
         PREFER16BIT = 0x02,
+        ALPHA = 0X02, //DTX1
         UNK1 = 0x04,
         UNK2 = 0x08,
         UNK3 = 0x10,
@@ -155,6 +156,36 @@ public static class DTX
                     texArray[texIndex + 3] = color.a;
                 }
             }
+
+            if ((header.m_IFlags & (int)DTXFlags.ALPHA) != 0 )
+            {
+                //skip the remaining 3 mip maps
+                b.BaseStream.Position += (header.m_BaseWidth * header.m_BaseHeight) / 4;
+                b.BaseStream.Position += (header.m_BaseWidth * header.m_BaseHeight) / 16;
+                b.BaseStream.Position += (header.m_BaseWidth * header.m_BaseHeight) / 64;
+
+                for (int y = 0; y < header.m_BaseHeight; y++)
+                {
+                    for (int x = 0; x < header.m_BaseWidth; x += 2) // increment by 2 because 4 bpp alpha
+                    {
+                        byte alphaByte = b.ReadByte();
+
+                        // Unpack the two 4-bit alpha values
+                        byte alpha1 = (byte)((alphaByte & 0xF0) >> 4); // alpha for the first pixel
+                        byte alpha2 = (byte)(alphaByte & 0x0F); // alpha for the second pixel
+
+                        // Scale up the 4-bit alpha values to 8 bits
+                        alpha1 = (byte)(alpha1 * 0x11);
+                        alpha2 = (byte)(alpha2 * 0x11);
+
+                        // Apply the alpha values to the corresponding pixels
+                        texArray[(y * header.m_BaseWidth + x) * 4 + 3] = alpha1;
+                        texArray[(y * header.m_BaseWidth + x + 1) * 4 + 3] = alpha2;
+                    }
+                }
+
+            }
+
         }
         else
         {

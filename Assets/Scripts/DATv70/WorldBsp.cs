@@ -77,10 +77,11 @@ public class WorldBsp
             m_nTextures = b.ReadInt32();
             ReadTextures(ref b);
             ReadVertices(ref b);
-
-            //ReadLeafs(b);
+            
+            ReadLeafs(b);
             // So this is odd, if I use the ReadLeafs function the binary reader position automatically increases by itself.
             // So we inline it here, literally copy pasted.
+            /*
             if (m_nLeafs > 0)
             {
                 for (int i = 0; i < m_nLeafs; i++)
@@ -141,6 +142,7 @@ public class WorldBsp
                     m_pLeafs.Add(pLeaf);
                 }
             }
+            */
 
             ReadPlanes(ref b);
             ReadSurfaces56(ref b);
