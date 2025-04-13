@@ -41,6 +41,7 @@ namespace LithFAQ
         KISS,
         CONTRACTJACK,
         DIEHARD,
+        LOMM
     }
     
     public static class GlobalStuff
@@ -56,7 +57,8 @@ namespace LithFAQ
             "Blood 2: The Chosen",
             "KISS Psycho Circus",
             "Contract Jack",
-            "Die Hard: Nakatomi Plaza"
+            "Die Hard: Nakatomi Plaza",
+            "Legends of Might & Magic (LoMM)"
         };
 
     }

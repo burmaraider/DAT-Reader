@@ -20,7 +20,7 @@ public class WorldObject
     public Int16 dataLength;
     public long dataOffset;
     public Int32 objectEntries;
-    public List<Int32> objectEntryFlag = new List<Int32>();
+    public List<Int32> objectEntryFlag { get; set; } = new List<Int32>();
     public List<short> objectEntryStringDataLength = new List<short>();
     public List<short> objectEntryStringLength = new List<short>();
 }
@@ -58,7 +58,7 @@ public class DiskRelVert
 
 public class Leafs
 {
-    public ushort m_nNumLeafLists;
+    public Int16 m_nNumLeafLists;
     public Int16 m_nLeafListIndex;
     public List<LeafList> m_pLeafLists = new List<LeafList>();
 

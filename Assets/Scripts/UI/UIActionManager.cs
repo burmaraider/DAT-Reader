@@ -10,6 +10,7 @@ public static class UIActionManager
 {
     public static Action OnPreLoadLevel;
     public static Action OnPostLoadLevel;
+    public static Action OnOpenDefaultLevel;
     public static Action OnReset;
     public static Action OnPreClearLevel;
     public static Action<int> OnSelectObject;
@@ -21,4 +22,5 @@ public static class UIActionManager
     public static Action OnExport;
     public static Action OnExportSelectedObject;
     public static Action OnExportAll;
+    public static Action OnExportTextures;
 }

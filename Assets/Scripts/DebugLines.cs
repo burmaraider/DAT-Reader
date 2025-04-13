@@ -1,15 +1,19 @@
-using System.Collections;
-using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class DebugLines : MonoBehaviour
 {
     public float raycastDistance = 20f;
     public float circleRadius = 1f;
-    public RaycastHit hit;
 
     public bool bFoundGround = false;
     public bool bCanAddCollider = false;
+
+    public bool MoveToFloor = false;
+    public ModelType ModelType;
+    public string ModelFilename;
+
+    private bool writeLogs = false;
 
     void Update()
     {
@@ -19,42 +23,102 @@ public class DebugLines : MonoBehaviour
             mc.sharedMesh = transform.gameObject.GetComponent<MeshFilter>().mesh;
             bCanAddCollider = false;
         }
-        
+
         if (bFoundGround)
-            return;
-            
-        // Cast a ray straight down.
-        bool hitSomething = Physics.Raycast(transform.position, -Vector3.up, out hit, raycastDistance);
-        
-        
-        
-        // Draw a debug ray and circle.
-        Debug.DrawRay(transform.position, -Vector3.up * raycastDistance, hitSomething ? Color.red : Color.green);
-        DebugExtension.DebugCircle(transform.position, Vector3.up, hitSomething ? Color.red : Color.green, circleRadius);
-
-        //move object to hit point
-        if (hitSomething)
         {
-
-            if (hit.collider.CompareTag("NoRayCast"))
-                return;
-
-            //calculate bounds of object so it doesnt fall through the floor
-            Bounds bounds = GetComponent<Renderer>().bounds;
-            float halfHeight = bounds.extents.y;
-
-            //sometimes pivot point isnt in the middle of the object, so we need to compoensate for that
-            float pivotOffset = transform.position.y - bounds.center.y;
-
-            //move object to hit point
-            transform.position = new Vector3(transform.position.x, hit.point.y + halfHeight + pivotOffset, transform.position.z);
-
-            bFoundGround = true;
-
-            bCanAddCollider = true;
-
+            return;
         }
 
+        TryToMove(0);
+
+        if (!bFoundGround)
+        {
+            TryToMove(Vector3.kEpsilon);
+        }
+
+        writeLogs = false;
+    }
+
+    private void TryToMove(float yOffset)
+    {
+        Vector3 epsilon = new Vector3(0, yOffset, 0);
+        var hitsDown = Physics.RaycastAll(transform.position + epsilon, Vector3.down, raycastDistance)
+            .OrderBy(x => x.distance)
+            .ToList();
+
+        var hitsUp = Physics.RaycastAll(transform.position - epsilon, Vector3.up, raycastDistance)
+            .OrderBy(x => x.distance)
+            .ToList();
+
+        // Draw a debug ray and circle.
+        Debug.DrawRay(transform.position + epsilon, Vector3.down * raycastDistance, hitsDown.Any() ? Color.red : Color.green);
+        DebugExtension.DebugCircle(transform.position + epsilon, Vector3.up, hitsDown.Any() ? Color.red : Color.green, circleRadius);
+
+        Debug.DrawRay(transform.position - epsilon, Vector3.up * raycastDistance, hitsUp.Any() ? Color.red : Color.blue);
+        DebugExtension.DebugCircle(transform.position - epsilon, Vector3.up, hitsUp.Any() ? Color.red : Color.blue, circleRadius);
+
+        //move object to hit point
+        foreach(var hit in hitsDown)
+        {
+            if(TryMove(hit, "down", yOffset))
+            {
+                break;
+            }
+        }
+
+        if (!bFoundGround)
+        {
+            foreach (var hit in hitsUp)
+            {
+                if (TryMove(hit, "up", yOffset))
+                {
+                    break;
+                }
+            }
+        }
+
+        if (!bFoundGround)
+        {
+            DebugLog(yOffset, "n/a", "No hit");
+        }
+    }
+
+    private void DebugLog(float yOffset, string direction, string message)
+    {
+        if (!writeLogs)
+        {
+            return;
+        }
+
+        string messagePrefix = $"DebugLines - {gameObject.name} (Parent={gameObject.transform.parent.name}) - (MoveToFloor={MoveToFloor}) - (Model={ModelType.ToString()}) - (Filename={ModelFilename}) - (dir={direction}) - (yOffset={yOffset}) - ";
+        Debug.Log(messagePrefix + message);
+    }
+
+    private bool TryMove(RaycastHit hit, string direction, float yOffset)
+    {
+        if (hit.collider.CompareTag("NoRayCast"))
+        {
+            DebugLog(yOffset, direction, $"Found hit on ({hit.collider.gameObject.name}) but has NoRayCast!");
+
+            return false;
+        }
+
+        //calculate bounds of object so it doesnt fall through the floor
+        Bounds bounds = GetComponent<Renderer>().bounds;
+        float halfHeight = bounds.extents.y;
+
+        //sometimes pivot point isnt in the middle of the object, so we need to compoensate for that
+        float pivotOffset = transform.position.y - bounds.center.y;
+
+        //move object to hit point
+        transform.position = new Vector3(transform.position.x, hit.point.y + halfHeight + pivotOffset, transform.position.z);
+
+        bFoundGround = true;
+
+        bCanAddCollider = true;
+
+        DebugLog(yOffset, direction, "SUCCESS!");
+        return true;
     }
 }
 

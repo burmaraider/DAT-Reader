@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using LithFAQ;
+using System;
 
 public class ObjectPicker : MonoBehaviour
 {
@@ -14,6 +15,20 @@ public class ObjectPicker : MonoBehaviour
     {
         selectionBox = GameObject.CreatePrimitive(PrimitiveType.Cube);
         selectionBox.transform.localScale = Vector3.zero;
+    }
+
+    void LogAllItemsClickedOn(Vector3 mousePosition)
+    {
+        Ray curRay = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits;
+        hits = Physics.RaycastAll(curRay, 100.0f);
+
+        System.Array.Sort(hits, delegate (RaycastHit x, RaycastHit y) { return x.distance.CompareTo(y.distance); });
+
+        foreach (var item in hits)
+        {
+            Debug.Log(item.transform.name);
+        }
     }
 
     void Update()
@@ -30,18 +45,7 @@ public class ObjectPicker : MonoBehaviour
                 }
 
                 //raycast all
-                Ray curRay = Camera.main.ScreenPointToRay(Input.mousePosition);
-                RaycastHit[] hits;
-                hits = Physics.RaycastAll(curRay, 100.0f);
-
-                System.Array.Sort(hits, delegate (RaycastHit x, RaycastHit y) { return x.distance.CompareTo(y.distance); });
-
-                foreach (var item in hits)
-                {
-                    Debug.Log(item.transform.name);
-                }
-
-
+                //LogAllItemsClickedOn(Input.mousePosition);
 
                 RaycastHit hit; 
                 Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition); 
@@ -55,7 +59,8 @@ public class ObjectPicker : MonoBehaviour
                         Transform topParent = hit.transform.parent;
 
                         //inform the UI that we have selected an object
-                        UIActionManager.OnSelectObjectIn3D?.Invoke(topParent.name);
+                        //Debug.Log($"Selected={hit.transform.name} - Parent={topParent.name}");
+                        UIActionManager.OnSelectObjectIn3D?.Invoke(hit.transform.name);
 
                         //create a box that encapsulates the selected object
                         Renderer renderer = hit.transform.GetComponent<Renderer>();
@@ -147,6 +152,15 @@ public class ObjectPicker : MonoBehaviour
 
         foreach(Transform t in levelGameObject.transform)
             if(t.tag == "Volumes")
+                t.gameObject.SetActive(b);
+    }
+
+    public void ToggleAIRails(System.Boolean b)
+    {
+        var levelGameObject = GameObject.Find("Level");
+
+        foreach (Transform t in levelGameObject.transform)
+            if (t.tag == "AITrk")
                 t.gameObject.SetActive(b);
     }
 

@@ -13,6 +13,7 @@ using static DTX;
 using TMPro;
 using System.Xml.Linq;
 using UnityEngine.Profiling;
+using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
 
 
 
@@ -156,7 +157,7 @@ namespace LithFAQ
 
             for (int i = 0; i < 1; i++)
             {
-                pBSP.Load(ref b, true);
+                pBSP.Load(ref b, true, importer.eGame);
                 pBSP.m_szWorldName = "PhysicsBSP";
                 bspListTest.Add(pBSP);
             }
@@ -186,7 +187,7 @@ namespace LithFAQ
 
                 try
                 {
-                    tBSP.Load(ref b, true);
+                    tBSP.Load(ref b, true, importer.eGame);
                     bspListTest.Add(tBSP);
                 }
                 catch (Exception e)
@@ -497,7 +498,7 @@ namespace LithFAQ
             //Load texture
             foreach (var tex in tBSP.m_aszTextureNames)
             {
-                DTX.LoadDTX(importer.szProjectPath + "\\" + tex, ref importer.dtxMaterialList, importer.szProjectPath);
+                DTX.LoadDTX(importer.szProjectPath + "\\" + tex, importer.dtxMaterialList, importer.szProjectPath);
             }
         }
 

@@ -17,6 +17,7 @@ public class MainGui : MonoBehaviour
 
     // Some bools for controlling different windows
     private bool bLoadLevelClicked = false;
+    private bool bLoadDefaultLevelClicked = false;
     private bool bClearLevelClicked = false;
     private bool bQuitClicked = false;
     private bool bShowHelp = true;
@@ -30,6 +31,7 @@ public class MainGui : MonoBehaviour
     private bool bToggleObjects = true;
     private bool bToggleBlockers = true;
     private bool bToggleVolumes = true;
+    private bool bToggleAIRail = true;
     private bool bToggleBSP = true;
     private bool bToggleShadows = false;
 
@@ -54,6 +56,7 @@ public class MainGui : MonoBehaviour
         bToggleObjects = true;
         bToggleBlockers = true;
         bToggleVolumes = true;
+        bToggleAIRail = true;
         bToggleBSP = true;
         bToggleShadows = false;
         bObjectViewer = false;
@@ -74,7 +77,6 @@ public class MainGui : MonoBehaviour
         ImGuiUn.Layout += OnLayout;
         UIActionManager.OnPostLoadLevel += OnPostLoadLevel;
         UIActionManager.OnReset += Reset;
-        
     }
 
     // Unsubscribe as well
@@ -102,15 +104,18 @@ public class MainGui : MonoBehaviour
     // Controll everything from the function that subscribes to Layout events
     void OnLayout()
     {
-
         ShowMainHeaderBar();
 
         // The IF checks is what controls whether the window is actually displayed
+        if (bLoadDefaultLevelClicked)
+        {
+            bLoadDefaultLevelClicked = false;
+            UIActionManager.OnOpenDefaultLevel?.Invoke();
+        }
         if (bLoadLevelClicked)
         {
             bLoadLevelClicked = false;
             bGameSelectWindow = true;
-
         }
         if (bClearLevelClicked)
         {
@@ -159,6 +164,7 @@ public class MainGui : MonoBehaviour
         Camera.main.GetComponent<ObjectPicker>().ToggleBSP(bToggleBSP);
         Camera.main.GetComponent<ObjectPicker>().ToggleShadows(bToggleShadows);
         Camera.main.GetComponent<ObjectPicker>().ToggleVolumes(bToggleVolumes);
+        Camera.main.GetComponent<ObjectPicker>().ToggleAIRails(bToggleAIRail);
         Camera.main.GetComponent<ObjectPicker>().ToggleObjects(bToggleObjects);
         importer.gameObject.GetComponent<Controller>().ChangeAmbientLighting(fAmbientSlider);
 
@@ -210,6 +216,7 @@ public class MainGui : MonoBehaviour
         ImGui.Checkbox("Show/Hide Objects", ref bToggleObjects);
         ImGui.Checkbox("Show/Hide Blockers", ref bToggleBlockers);
         ImGui.Checkbox("Show/Hide Volumes", ref bToggleVolumes);
+        ImGui.Checkbox("Show/Hide AI Rail", ref bToggleAIRail);
 
         ImGui.NextColumn();
         ImGui.SliderFloat("Ambient", ref fAmbientSlider, 0.0f, 2.0f);
@@ -231,7 +238,7 @@ public class MainGui : MonoBehaviour
         ImGui.Begin("Help Menu", ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoTitleBar);
 
         // Display some text in the window
-        ImGui.TextWrapped("Right Click - Enable Freefly Camera\r\nWSAD - Move Camera\r\nQ & E - Lower and raise Camera\r\nShift - Move Faster\r\nDel - Delete Selected Object");
+        ImGui.TextWrapped("Shift Click - Select Object\r\nRight Click - Enable Freefly Camera\r\nWSAD - Move Camera\r\nQ & E - Lower and raise Camera\r\nShift - Move Faster\r\nDel - Delete Selected Object");
 
         ImGui.End();
     }
@@ -244,9 +251,10 @@ public class MainGui : MonoBehaviour
         ImGui.SetNextWindowBgAlpha(1.0f);
         if (ImGui.BeginMenu("File"))
         {
+            ImGui.MenuItem("Load Default Level", null, ref bLoadDefaultLevelClicked);
             ImGui.MenuItem("Load Level", null, ref bLoadLevelClicked);
-            
-            if(bLevelLoaded)
+
+            if (bLevelLoaded)
                 ImGui.MenuItem("Clear Level", null, ref bClearLevelClicked);
             ImGui.Separator();
             

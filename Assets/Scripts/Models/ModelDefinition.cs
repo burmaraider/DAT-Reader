@@ -14,7 +14,9 @@ public enum ModelType
     BodyProp,
     PropType,
     WeaponItem,
-    GearItem
+    GearItem,
+    Princess,
+    Monster
 }
 
 public class ModelDefinition
@@ -34,4 +36,10 @@ public class ModelDefinition
     {
         szModelTextureName.RemoveAll(string.IsNullOrEmpty);
     }
+}
+
+public class ModelDefinitionComponent : MonoBehaviour
+{
+    public ModelDefinition ModelDef;
+    public bool HasGravity;
 }

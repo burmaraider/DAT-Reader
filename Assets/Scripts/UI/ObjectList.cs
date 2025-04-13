@@ -1,13 +1,11 @@
 ﻿using UnityEngine;
 using ImGuiNET;
-using UnityEngine.Rendering;
-using UnityEngine.UI;
-using System.Drawing;
-using System;
 using LithFAQ;
 using System.Collections.Generic;
 using System.Data;
 using System.Collections;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 public class ObjectList : MonoBehaviour
 {
@@ -15,6 +13,8 @@ public class ObjectList : MonoBehaviour
 
     public bool bShowObjectList = true;
     public List<string> szWorldObjectNameList = new List<string>();
+    public string[] sortedNameList;
+    private Dictionary<int, int> sortedMap;
     public int nSelectedObject = 0;
     public int nPrevSelectedObject = 0;
 
@@ -44,12 +44,12 @@ public class ObjectList : MonoBehaviour
         //strip _obj off the end
         szName = szName.Replace("_obj", "");
 
-        if (szWorldObjectNameList.Count > 0)
+        if (sortedNameList.Length > 0)
         {
             int i = 0;
-            foreach (var szWorldObject in szWorldObjectNameList)
+            foreach (var name in sortedNameList)
             {
-                if (szWorldObject.Equals(szName))
+                if (name.Equals(szName))
                 {
                     nSelectedObject = i;
                 }
@@ -75,16 +75,16 @@ public class ObjectList : MonoBehaviour
         GetWorldObjects();
 
         ImGui.PushItemWidth(-1);
-        ImGui.ListBox("Objects", ref nSelectedObject, szWorldObjectNameList.ToArray(), szWorldObjectNameList.Count, szWorldObjectNameList.Count);
-
+        ImGui.ListBox("Objects", ref nSelectedObject, sortedNameList, sortedNameList.Length, sortedNameList.Length);
 
         ImGui.End();
 
-        if (nPrevSelectedObject != nSelectedObject)
+        var realSelectedObjectIndex = sortedMap[nSelectedObject];
+        if (nPrevSelectedObject != realSelectedObjectIndex)
         {
-            nPrevSelectedObject = nSelectedObject;
-
-            UIActionManager.OnSelectObject?.Invoke(nSelectedObject);
+            nPrevSelectedObject = realSelectedObjectIndex;
+            
+            UIActionManager.OnSelectObject?.Invoke(realSelectedObjectIndex);
 
             if (importer.DatReader != null)
             {
@@ -92,7 +92,7 @@ public class ObjectList : MonoBehaviour
 
                 var temp = reader.GetWorldObjects();
 
-                LTTypes.LTVector test = (LTTypes.LTVector)temp.obj[nSelectedObject].options["Pos"];
+                LTTypes.LTVector test = (LTTypes.LTVector)temp.obj[realSelectedObjectIndex].options["Pos"];
                 Vector3 newPos = test;
 
                 Vector3 direction = Camera.main.transform.forward; // Get the direction the camera is facing
@@ -142,6 +142,33 @@ public class ObjectList : MonoBehaviour
                 {
                     szWorldObjectNameList.Add(item.options["Name"].ToString());
                 }
+
+                var regex = new Regex(@"^(.*?)(\d+)$");
+
+                var mapList = szWorldObjectNameList
+                    .Select((name, index) => {
+                        var match = regex.Match(name);
+                        return new
+                        {
+                            Index = index,
+                            Original = name,
+                            Prefix = match.Success ? match.Groups[1].Value : name,
+                            Number = match.Success ? int.Parse(match.Groups[2].Value) : int.MaxValue // non-matching go to the end
+                        };
+                    })
+                    .ToList();
+
+                sortedMap = mapList
+                    .OrderBy(x => x.Prefix)
+                    .ThenBy(x => x.Number)
+                    .Select((x, index) => new { Index = index, OriginalObject = x })
+                    .ToDictionary(x => x.Index, x => x.OriginalObject.Index);
+
+                sortedNameList = mapList
+                    .OrderBy(x => x.Prefix)
+                    .ThenBy(x => x.Number)
+                    .Select(x => x.Original)
+                    .ToArray();
             }
         }
     }
