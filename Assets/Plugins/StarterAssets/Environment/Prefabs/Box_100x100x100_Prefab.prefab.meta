@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: e5f4daf24146ee040b5a2d7a73b30aa0
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 196525
+  packageName: Starter Assets - FirstPerson | Updates in new CharacterController
+    package
+  packageVersion: 1.3
+  assetPath: Assets/StarterAssets/Environment/Prefabs/Box_100x100x100_Prefab.prefab
+  uploadId: 691166

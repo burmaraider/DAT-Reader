@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 7ab977a21c92388468ee65ad1c0e5a78
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 196525
+  packageName: Starter Assets - FirstPerson | Updates in new CharacterController
+    package
+  packageVersion: 1.3
+  assetPath: Assets/StarterAssets/Environment/Art/Materials/GridOrange_01_Mat.mat
+  uploadId: 691166

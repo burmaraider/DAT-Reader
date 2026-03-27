@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c82978c3789dad44da354dc354c782b2
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 196525
+  packageName: Starter Assets - FirstPerson | Updates in new CharacterController
+    package
+  packageVersion: 1.3
+  assetPath: Assets/StarterAssets/Mobile/Prefabs/VirtualInputs/UI_Virtual_TouchZone.prefab
+  uploadId: 691166

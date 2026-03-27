@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 2690b0834b22e2940b40018922228eb6
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 112000000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 196525
+  packageName: Starter Assets - FirstPerson | Updates in new CharacterController
+    package
+  packageVersion: 1.3
+  assetPath: Assets/StarterAssets/FirstPersonController/Scenes/Playground/LightingData.asset
+  uploadId: 691166

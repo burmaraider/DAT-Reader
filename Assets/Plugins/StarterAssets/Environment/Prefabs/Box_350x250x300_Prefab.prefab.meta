@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 687dbafc2b84b2846b9a4a7a7dae2a7e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 196525
+  packageName: Starter Assets - FirstPerson | Updates in new CharacterController
+    package
+  packageVersion: 1.3
+  assetPath: Assets/StarterAssets/Environment/Prefabs/Box_350x250x300_Prefab.prefab
+  uploadId: 691166

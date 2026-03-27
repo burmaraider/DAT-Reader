@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f0271df749728104eac22c3d897fd8ce
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 196525
+  packageName: Starter Assets - FirstPerson | Updates in new CharacterController
+    package
+  packageVersion: 1.3
+  assetPath: Assets/StarterAssets/Mobile/Prefabs/EventSystem/UI_EventSystem.prefab
+  uploadId: 691166

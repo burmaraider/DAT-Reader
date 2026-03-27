@@ -43,6 +43,9 @@ TODO:
 	
 	- Create Scene or maybe just prefab?
 	
+	Creating WorldObjects for SECRETSOFTHESPHINX
+		Error creating WorldObject TeleporterSound3 - could not find WAV (filename=Sounds\Spells\invisibiltiy\loop.wav)
+	
 	- Sword in stone:
 		DRAGONBLADE.DAT - WorldObjects with filename-looking strings
 			SwordInStone0 (SwordInStone) - DimsFile=models\props\stoneHilt.abc

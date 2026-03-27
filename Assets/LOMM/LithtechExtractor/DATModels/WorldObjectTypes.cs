@@ -1,0 +1,25 @@
+public enum WorldObjectTypes
+{
+    Light,
+    AIRail,
+    AIBarrier,
+    Prop,
+    StartPoint,
+    Sound,
+    Monster,
+    BuyZone,
+    RescueZone,
+    Teleporter,
+    SwordInStone,
+    WorldProperties,
+    Princess,
+    SoftLandingZone,
+    SpectatorStartPoint,
+    EndlessFall,
+    InvisibleVolume,
+    VisibleVolume,
+    Door,
+    MiscGeometry,
+    Skybox,
+    Unknown
+}

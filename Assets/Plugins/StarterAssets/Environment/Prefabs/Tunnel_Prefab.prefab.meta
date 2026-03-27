@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: e5d7b87d422ee0f478ee09eb32e24f4e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 196525
+  packageName: Starter Assets - FirstPerson | Updates in new CharacterController
+    package
+  packageVersion: 1.3
+  assetPath: Assets/StarterAssets/Environment/Prefabs/Tunnel_Prefab.prefab
+  uploadId: 691166

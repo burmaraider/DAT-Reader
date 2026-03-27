@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 979aef027a1c86c42a15ce35fce366fa
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 196525
+  packageName: Starter Assets - FirstPerson | Updates in new CharacterController
+    package
+  packageVersion: 1.3
+  assetPath: Assets/StarterAssets/Environment/Art/Materials/Blue_Mat.mat
+  uploadId: 691166
