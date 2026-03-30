@@ -28,13 +28,11 @@ public class DataExtractor : EditorWindow
     public static readonly string GeneratedAssetsFolder =       "Assets/LOMM/GeneratedAssets";
 
     public static readonly string AudioClipPath = $"{GeneratedAssetsFolder}/AudioClips";
-
     public static readonly string TexturePath = $"{GeneratedAssetsFolder}/Textures";
     public static readonly string MaterialPath = $"{GeneratedAssetsFolder}/Materials";
-
     public static readonly string ABCMeshPath = $"{GeneratedAssetsFolder}/Meshes/ABCModels";
+    public static readonly string ABCAvatarPath = $"{GeneratedAssetsFolder}/Avatars";
     public static readonly string ABCPrefabPath = $"{GeneratedAssetsFolder}/Prefabs/ABCModels";
-
     public static readonly string BSPMeshPath = $"{GeneratedAssetsFolder}/Meshes/BSPModels";
     public static readonly string BSPPrefabPath = $"{GeneratedAssetsFolder}/Prefabs/BSPModels";
 
@@ -51,43 +49,54 @@ public class DataExtractor : EditorWindow
     [MenuItem("Tools/Generate All Assets (fast)")]
     public static void ExtractAllFast()
     {
-        ExtractAll(false);
+        try
+        {
+            ExtractAll(false);
+        }
+        catch(Exception ex)
+        {
+            Debug.LogError(ex.Message);
+            EditorUtility.ClearProgressBar();
+        }
     }
 
     [MenuItem("Tools/Generate All Assets (slow - recreate)")]
     public static void ExtractAllSlow()
     {
-        ExtractAll(true);
+        try
+        {
+            ExtractAll(true);
+        }
+        catch
+        {
+            EditorUtility.ClearProgressBar();
+        }
     }
 
     public static void ExtractAll(bool alwaysCreate)
     {
         System.Diagnostics.Stopwatch totalWatch = System.Diagnostics.Stopwatch.StartNew();
         System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
-        string stats = "Beginning of extract all. Using project path: " + ProjectFolder + "\r\n";
-        if (!CreateDefaultMaterials())
-        {
-            return;
-        }
-        stats += watch.GetElapsedTime("CreateDefaultMaterials\r\n", 1);
+        string                                                                  stats = "Beginning of extract all. Using project path: " + ProjectFolder + "\r\n";
+        bool success = CreateDefaultMaterials();                                stats += watch.GetElapsedTime("CreateDefaultMaterials\r\n", 1);
+        if (!CreateDefaultMaterials()) return;
+        CreateGeneratedPaths();                                                 stats += watch.GetElapsedTime("CreateGeneratedPaths\r\n", 1);
+        AudioLookupUtility.SetLookups(alwaysCreate);                            stats += watch.GetElapsedTime("AudioLookupUtility.SetLookups\r\n", 1);
 
-        CreateGeneratedPaths();
-        stats += watch.GetElapsedTime("CreateGeneratedPaths\r\n", 1);
+        TextureLookupUtility.SetLookups(alwaysCreate);                          stats += watch.GetElapsedTime("TextureLookupUtility.SetLookups\r\n", 1);
+        var datModels = GetAllDATModels();                                      stats += watch.GetElapsedTime("GetAllDATModels\r\n", 1);
+        var sprModels = GetAllSPRModels();                                      stats += watch.GetElapsedTime("GetAllSPRModels\r\n", 1);
+        MaterialLookupUtility.SetLookups(alwaysCreate, datModels, sprModels);   stats += watch.GetElapsedTime("MaterialLookupUtility.SetLookups\r\n", 1);
 
-        AudioLookupUtility.SetLookups(alwaysCreate); stats += watch.GetElapsedTime("AudioLookupUtility.SetLookups\r\n", 1);
-
-        TextureLookupUtility.SetLookups(alwaysCreate); stats += watch.GetElapsedTime("TextureLookupUtility.SetLookups\r\n", 1);
-        var datModels = GetAllDATModels(); stats += watch.GetElapsedTime("GetAllDATModels\r\n", 1);
-        var sprModels = GetAllSPRModels(); stats += watch.GetElapsedTime("GetAllSPRModels\r\n", 1);
-        MaterialLookupUtility.SetLookups(alwaysCreate, datModels, sprModels); stats += watch.GetElapsedTime("MaterialLookupUtility.SetLookups\r\n", 1);
-
-        var abcModels = GetABCModels();
-        ABCMeshLookupUtility.SetLookups(alwaysCreate, abcModels); stats += watch.GetElapsedTime("ABCMeshLookupUtility.SetLookups\r\n", 1);
-        // ABCPrefabLookupUtility.SetLookups(alwaysCreate, datModels, abcModels); stats += watch.GetElapsedTime("ABCLookupUtility.SetLookups\r\n", 1);
+        var abcModels = GetABCModels(true);                                     stats += watch.GetElapsedTime("GetABCModels\r\n", 1);
+        ABCMeshLookupUtility.SetLookups(abcModels);                             stats += watch.GetElapsedTime("ABCMeshLookupUtility.SetLookups\r\n", 1);
+        ABCPrefabLookupUtility.SetLookups(datModels, abcModels);  stats += watch.GetElapsedTime("ABCPrefabLookupUtility.SetLookups\r\n", 1);
 
         //CreateAssetsFromDATModels(datModels); stats += watch.GetElapsedTime("CreateAssetsFromDATModels\r\n", 1);
 
         stats += totalWatch.GetElapsedTime("Total Processing Time\r\n");
+        stats += "Humanoid Avatars:\r\n\t" + string.Join("\r\n\t", ABCPrefabLookupUtility.HumanoidModels) + "\r\n";
+        stats += "Models missing materials:\r\n\t" + string.Join("\r\n\t", ABCPrefabLookupUtility.ModelsWithNoMaterials);
         Debug.Log(stats);
     }
 
@@ -105,15 +114,25 @@ public class DataExtractor : EditorWindow
         Directory.CreateDirectory(TexturePath);
         Directory.CreateDirectory(MaterialPath);
         Directory.CreateDirectory(ABCMeshPath);
+        Directory.CreateDirectory(ABCAvatarPath);
         Directory.CreateDirectory(ABCPrefabPath);
         Directory.CreateDirectory(BSPMeshPath);
         Directory.CreateDirectory(BSPPrefabPath);
         Directory.CreateDirectory(AudioClipPath);
     }
 
-    protected static List<ABCModel> GetABCModels()
+    protected static List<ABCModel> GetABCModels(bool getAll)
     {
-        var abcFiles = Directory.GetFiles(ProjectFolder, "*.abc", SearchOption.AllDirectories);
+        string[] abcFiles;
+        if (getAll)
+        {
+            abcFiles = Directory.GetFiles(ProjectFolder, "*.abc", SearchOption.AllDirectories);
+        }
+        else
+        {
+            abcFiles = Directory.GetFiles(ProjectFolder + "MODELS\\", "*.abc", SearchOption.TopDirectoryOnly);
+        }
+
         var abcModels = new List<ABCModel>();
         int i = 0;
         foreach (var abcFile in abcFiles)

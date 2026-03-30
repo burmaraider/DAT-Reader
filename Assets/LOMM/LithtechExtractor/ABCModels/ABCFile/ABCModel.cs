@@ -21,6 +21,8 @@ public class ABCModel
 
     public string RelativePathToABCFileLowercase { get; set; }
 
+    private List<Node> _flattenedNodesCache = null;
+
     private void FlattenNodesRecursive(Node node, List<Node> list)
     {
         if (node == null)
@@ -36,39 +38,32 @@ public class ABCModel
         }
     }
 
-    public int GetMaterialCount()
-    {
-        if (PiecesChunk.Pieces == null || PiecesChunk.Pieces.Count == 0)
-        {
-            return 0;
-        }
-
-        // The number of materials is the number of unique/distinct MaterialIndexes.
-        return PiecesChunk.Pieces.Select(x => x.MaterialIndex).Distinct().Count();
-    }
-
-    public ushort GetMaxMaterialIndex()
-    {
-        if (PiecesChunk.Pieces == null || PiecesChunk.Pieces.Count == 0)
-        {
-            return 0;
-        }
-
-        // The number of materials is the number of unique/distinct MaterialIndexes.
-        return PiecesChunk.Pieces.Max(x => x.MaterialIndex);
-    }
-
     public List<Node> GetFlattenedNodes()
     {
-        var result = new List<Node>();
-        FlattenNodesRecursive(RootNode, result);
-        return result;
+        if (_flattenedNodesCache is null)
+        {
+            _flattenedNodesCache = new List<Node>();
+            FlattenNodesRecursive(RootNode, _flattenedNodesCache);
+        }
+        
+        return _flattenedNodesCache;
     }
 
-    public List<Transform> GetFlattenedBoneTransforms()
+
+    private void CreateBindPosesRecursive(Node node, List<Matrix4x4> bindPoses)
     {
-        var allNodes = GetFlattenedNodes();
-        var flattenedBoneTransforms = allNodes.OrderBy(x => x.Id).Select(x => x.GameObject.transform).ToList();
-        return flattenedBoneTransforms;
+        bindPoses.Add(node.Matrix.ToMatrix4x4().inverse);
+
+        foreach (var child in node.Children)
+        {
+            CreateBindPosesRecursive(child, bindPoses);
+        }
+    }
+
+    public List<Matrix4x4> CreateBindPoses()
+    {
+        var bindPoses = new List<Matrix4x4>();
+        CreateBindPosesRecursive(RootNode, bindPoses);
+        return bindPoses;
     }
 }

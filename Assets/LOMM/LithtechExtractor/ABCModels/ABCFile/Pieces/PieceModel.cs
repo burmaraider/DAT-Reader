@@ -9,4 +9,13 @@ public class PieceModel
     public ushort Padding { get; set; }
     public string Name { get; set; }
     public List<LODModel> LODs { get; set; }
+
+    public bool HasMesh
+    {
+        get
+        {
+            return LODs[0].Faces.Count > 1;
+        }
+    }
+
 }

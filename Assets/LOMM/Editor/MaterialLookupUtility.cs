@@ -95,22 +95,42 @@ public class MaterialLookupUtility : DataExtractor
         material.SetFloat("_Smoothness", 0f);
         material.SetFloat("_BlendModePreserveSpecular", 0f);
 
-        if (surfaceAlpha.HasValue || textureLookup.TransparencyType == TransparencyTypes.BlendedTransparency)
+        bool useTextureDeterminedTransparency = false;
+        if (useTextureDeterminedTransparency)
         {
-            SetMaterialPropsTransparent(material, surfaceAlpha);
-        }
-        else if (textureLookup.TransparencyType == TransparencyTypes.NoTransparency)
-        {
-            SetMaterialPropsOpaqueNoAlpha(material);
-        }
-        else if (textureLookup.TransparencyType == TransparencyTypes.ClipOnly)
-        {
-            SetMaterialPropsOpaqueAlphaClip(material);
+            // Below uses rules based on the texture that was loaded. Basically:
+            //      If the texture had only black and white values: TransparencyTypes.ClipOnly
+            //      If the texture had any grey values:             TransparencyTypes.BlendedTransparency
+            //      else                                            TransparencyTypes.NoTransparency
+            // But in testing, many textures have a "grey" value somewhere and end up looking transparent.
+            if (surfaceAlpha.HasValue || textureLookup.TransparencyType == TransparencyTypes.BlendedTransparency)
+            {
+                SetMaterialPropsTransparent(material, surfaceAlpha);
+            }
+            else if (textureLookup.TransparencyType == TransparencyTypes.NoTransparency)
+            {
+                SetMaterialPropsOpaqueNoAlpha(material);
+            }
+            else if (textureLookup.TransparencyType == TransparencyTypes.ClipOnly)
+            {
+                SetMaterialPropsOpaqueAlphaClip(material);
+            }
+            else
+            {
+                Debug.LogError($"CreateMaterial - could not determine type for {textureLookup.UnityPathAndFilenameToPNG} and {textureLookup.TransparencyType}");
+                return false;
+            }
         }
         else
         {
-            Debug.LogError($"CreateMaterial - could not determine type for {textureLookup.UnityPathAndFilenameToPNG} and {textureLookup.TransparencyType}");
-            return false;
+            if (surfaceAlpha.HasValue)
+            {
+                SetMaterialPropsTransparent(material, surfaceAlpha);
+            }
+            else
+            {
+                SetMaterialPropsOpaqueNoAlpha(material);
+            }
         }
 
         AssetDatabase.CreateAsset(material, pathToMaterial);

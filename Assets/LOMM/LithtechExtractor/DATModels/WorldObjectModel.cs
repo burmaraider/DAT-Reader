@@ -213,7 +213,7 @@ public class WorldObjectModel
 
         spriteSurfaceName = GetStringPropValue("SpriteSurfaceName");
         surfaceColor1 = GetVector3PropValue("SurfaceColor1");
-        surfaceColor1 = GetVector3PropValue("SurfaceColor1");
+        surfaceColor2 = GetVector3PropValue("SurfaceColor2");
         viscosity = GetFloatPropValue("Viscosity");
 
         teamNumber = GetFloatValueFromUIntProp("TeamNbr") ?? 0f;

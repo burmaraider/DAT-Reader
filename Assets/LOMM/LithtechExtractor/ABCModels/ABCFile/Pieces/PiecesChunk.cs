@@ -1,93 +1,84 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 public sealed class PiecesChunk
 {
-    public List<PieceModel> Pieces { get; private set; } = new List<PieceModel>();
+    public List<PieceModel> Pieces { get; set; } = new List<PieceModel>();
+    public List<PieceModel> AllPieces { get; private set; } = new List<PieceModel>();
 
-    public int GetTotalTextureCount()
+    private int? _totalTextureCount = null;
+
+    public int TotalTextureCount
     {
-        int max = 0;
-        foreach (PieceModel piece in Pieces)
+        get
         {
-            if (piece.MaterialIndex > max) max = piece.MaterialIndex;
+            if (_totalTextureCount is null)
+            {
+                if (Pieces is null || Pieces.Count == 0)
+                {
+                    _totalTextureCount = 0;
+                }
+                else
+                {
+                    _totalTextureCount = Pieces.Max(x => x.MaterialIndex) + 1;
+                }
+            }
+
+            return _totalTextureCount.Value;
+        }
+    }
+
+    public int GetInitialOffset(int lodIndex, int materialIndex)
+    {
+        if (materialIndex == 0)
+        {
+            return 0;
         }
 
-        return max + 1;
+        return Pieces.Select(piece => piece.MaterialIndex < materialIndex ? piece.LODs[lodIndex].Vertices.Count : 0).Sum();
     }
 
-    public int GetTotalFaceCount(int lodIndex)
+
+    public List<int> GetIndices(int lodIndex, int materialIndex, bool flip)
     {
-        int count = Pieces
-            .Sum(p => p.LODs[lodIndex].Faces.Count);
+        List<int> indices = new();
 
-        return count;
-    }
-
-    public int GetFaceCount(int lodIndex, int materialIndex)
-    {
-        int count = Pieces
-            .Where(p => p.MaterialIndex == materialIndex)
-            .Sum(p => p.LODs[lodIndex].Faces.Count);
-
-        return count;
-    }
-
-    public int GetVertexCount(int lodIndex, int materialIndex)
-    {
-        int faceCount = GetFaceCount(lodIndex, materialIndex);
-        return faceCount * 3;
-    }
-
-    public int GetTotalVertexCount(int lodIndex)
-    {
-        int faceCount = GetTotalFaceCount(lodIndex);
-        return faceCount * 3;
-    }
-
-    public int[] GetIndices(int lodIndex, int materialIndex, int offset, bool flip)
-    {
-        int faceCount = GetFaceCount(lodIndex, materialIndex);
-        int[] indices = new int[faceCount * 3];
-
-        for (int index = 0; index < faceCount; index++)
+        int offset = GetInitialOffset(lodIndex, materialIndex);
+        foreach (var piece in Pieces)
         {
-            if (flip)
+            if (piece.MaterialIndex == materialIndex)
             {
-                indices[index * 3 + 0] = index * 3 + 0 + offset;
-                indices[index * 3 + 1] = index * 3 + 2 + offset;
-                indices[index * 3 + 2] = index * 3 + 1 + offset;
-            }
-            else
-            {
-                indices[index * 3 + 0] = index * 3 + 0 + offset;
-                indices[index * 3 + 1] = index * 3 + 1 + offset;
-                indices[index * 3 + 2] = index * 3 + 2 + offset;
+                foreach (var face in piece.LODs[lodIndex].Faces)
+                {
+                    var triangleIndices = face.FaceVertices.Select(face => face.VertexIndex + offset);
+                    if (flip)
+                    {
+                        triangleIndices = triangleIndices.Reverse();
+                    }
+
+                    indices.AddRange(triangleIndices);
+                }
+
+                offset += piece.LODs[lodIndex].Vertices.Count;
             }
         }
 
         return indices;
     }
 
-    public Vector3[] GetVertices(int lodIndex, int materialIndex)
+    public List<Vector3> GetVertices(int lodIndex, int materialIndex)
     {
-        Vector3[] vertices = new Vector3[GetFaceCount(lodIndex, materialIndex) * 3];
+        List<Vector3> vertices = new List<Vector3>();
 
-        int vertexIndex = 0;
-        foreach (PieceModel piece in Pieces)
+        foreach (var piece in Pieces)
         {
             if (piece.MaterialIndex == materialIndex)
             {
-                foreach (var face in piece.LODs[0].Faces)
+                foreach (var vertex in piece.LODs[lodIndex].Vertices)
                 {
-                    foreach (var faceVertex in face.FaceVertices)
-                    {
-                        var vertex = piece.LODs[lodIndex].Vertices[faceVertex.VertexIndex];
-
-                        vertices[vertexIndex] = new Vector3(vertex.Location.x, vertex.Location.y, vertex.Location.z);
-                        vertexIndex++;
-                    }
+                    vertices.Add(new Vector3(vertex.Position.x, vertex.Position.y, vertex.Position.z));
                 }
             }
         }
@@ -95,24 +86,35 @@ public sealed class PiecesChunk
         return vertices;
     }
 
-    public Vector3[] GetNormals(int lodIndex, int materialIndex)
+    public List<BoneWeight> GetBoneWeights(int lodIndex, int materialIndex)
     {
-        Vector3[] normals = new Vector3[GetFaceCount(lodIndex, materialIndex) * 3];
+        List<BoneWeight> boneWeights = new();
 
-        int normalIndex = 0;
-        foreach (PieceModel piece in Pieces)
+        foreach (var piece in Pieces)
         {
             if (piece.MaterialIndex == materialIndex)
             {
-                foreach (var face in piece.LODs[0].Faces)
+                foreach (var vertex in piece.LODs[lodIndex].Vertices)
                 {
-                    foreach (var faceVertex in face.FaceVertices)
-                    {
-                        var vertex = piece.LODs[lodIndex].Vertices[faceVertex.VertexIndex];
+                    boneWeights.Add(vertex.GetBoneWeight());
+                }
+            }
+        }
 
-                        normals[normalIndex] = new Vector3(vertex.Normal.x, vertex.Normal.y, vertex.Normal.z);
-                        normalIndex++;
-                    }
+        return boneWeights;
+    }
+
+    public List<Vector3> GetNormals(int lodIndex, int materialIndex)
+    {
+        List<Vector3> normals = new();
+
+        foreach (var piece in Pieces)
+        {
+            if (piece.MaterialIndex == materialIndex)
+            {
+                foreach (var vertex in piece.LODs[lodIndex].Vertices)
+                {
+                    normals.Add(new Vector3(vertex.Normal.x, vertex.Normal.y, vertex.Normal.z));
                 }
             }
         }
@@ -120,34 +122,93 @@ public sealed class PiecesChunk
         return normals;
     }
 
-    public Vector2[] GetTextureCoordinates(int lodIndex, int materialIndex, bool flipV)
+    public List<Vector2> GetTextureCoordinates(int lodIndex, int materialIndex, bool flipV, string relativePathToABCFileLowercase)
     {
-        Vector2[] textureCoordinates = new Vector2[GetFaceCount(lodIndex, materialIndex) * 3];
+        List<Vector2> textureCoordinates = new();
 
-        int textureCoordinateIndex = 0;
-        foreach (PieceModel piece in Pieces)
+        foreach (var piece in Pieces)
         {
             if (piece.MaterialIndex == materialIndex)
             {
-                foreach (var face in piece.LODs[0].Faces)
+                for (int i = 0; i < piece.LODs[lodIndex].Vertices.Count; i++)
                 {
-                    foreach (var faceVertex in face.FaceVertices)
-                    {
-                        if (flipV)
-                        {
-                            textureCoordinates[textureCoordinateIndex] = new Vector2(faceVertex.Texcoord.x, 1f - faceVertex.Texcoord.y);
-                        }
-                        else
-                        {
-                            textureCoordinates[textureCoordinateIndex] = new Vector2(faceVertex.Texcoord.x, faceVertex.Texcoord.y);
-                        }
+                    var matchingFaceVertex = piece.LODs[lodIndex].Faces
+                        .SelectMany(face => face.FaceVertices)
+                        .FirstOrDefault(faceVertices => faceVertices.VertexIndex == i);
 
-                        textureCoordinateIndex++;
+                    if (matchingFaceVertex != null)
+                    {
+                        textureCoordinates.Add(new Vector2(
+                            matchingFaceVertex.Texcoord.x,
+                            flipV ? 1f - matchingFaceVertex.Texcoord.y : matchingFaceVertex.Texcoord.y));
+                    }
+                    else
+                    {
+                        // In Lithtech, UV coordinates are on faces/triangles.
+                        // In Unity, UV coordinates are on vertices. If a vertex isn't referenced by any face, we won't have any UV data for it so just fill out a dummy so the mesh won't break.
+                        textureCoordinates.Add(new Vector2());
                     }
                 }
             }
         }
 
         return textureCoordinates;
+    }
+    
+    /// <summary>
+    /// Resolves UV mismatches where the same vertex index is referenced by multiple faces
+    /// with differing UV coordinates. Duplicate vertices are appended to the LOD's vertex
+    /// list and the offending face indices are updated to point to the new entries.
+    /// This is run across all pieces and all LODs before the Pieces list is populated.
+    /// </summary>
+    public void FixFacesForExtraUVCoordinates()
+    {
+        const float UVTolerance = 1e-6f;
+
+        foreach (var piece in Pieces)
+        {
+            foreach (var lod in piece.LODs)
+            {
+                // Track the canonical UV assigned to each vertex index.
+                // Key = original vertex index, Value = (tu, tv) already claimed by a prior face.
+                var assignedUVs = new Dictionary<int, (float tu, float tv)>();
+
+                foreach (var face in lod.Faces)
+                {
+                    for (int faceSlot = 0; faceSlot < face.FaceVertices.Count; faceSlot++)
+                    {
+                        var faceVertRef = face.FaceVertices[faceSlot];
+                        int originalIndex = faceVertRef.VertexIndex;
+
+                        if (!assignedUVs.TryGetValue(originalIndex, out var claimedUV))
+                        {
+                            // First face to use this vertex index — claim its UV.
+                            assignedUVs[originalIndex] = (faceVertRef.Texcoord.x, faceVertRef.Texcoord.y);
+                        }
+                        else
+                        {
+                            // Another face already claimed this vertex with a different UV.
+                            bool tuMismatch = Math.Abs(faceVertRef.Texcoord.x - claimedUV.tu) > UVTolerance;
+                            bool tvMismatch = Math.Abs(faceVertRef.Texcoord.y - claimedUV.tv) > UVTolerance;
+
+                            if (tuMismatch || tvMismatch)
+                            {
+                                // Clone the original vertex and append it.
+                                var newVertex = new VertexModel(lod.Vertices[originalIndex]);
+                                ushort newIndex = (ushort)lod.Vertices.Count;
+                                lod.Vertices.Add(newVertex);
+
+                                // Re-point this face slot to the new vertex.
+                                faceVertRef.VertexIndex = newIndex;
+
+                                // Claim the new index's UV so subsequent faces sharing this
+                                // same mismatch UV can also reuse it instead of creating more duplicates.
+                                assignedUVs[newIndex] = (faceVertRef.Texcoord.x, faceVertRef.Texcoord.y);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -1,8 +1,7 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
-using System.Drawing.Drawing2D;
 using System.IO;
-using System.Xml.Linq;
 using UnityEngine;
 
 public static class ABCModelReader
@@ -30,10 +29,10 @@ public static class ABCModelReader
     private static Matrix ReadMatrix(BinaryReader reader)
     {
         Matrix matrix = new Matrix();
-        matrix.Unknown4 = ReadVector4(reader);
-        matrix.Unknown1 = ReadVector4(reader);
-        matrix.Unknown2 = ReadVector4(reader);
-        matrix.Unknown3 = ReadVector4(reader);
+        matrix.Row3 = ReadVector4(reader);
+        matrix.Row0 = ReadVector4(reader);
+        matrix.Row1 = ReadVector4(reader);
+        matrix.Row2 = ReadVector4(reader);
         return matrix;
     }
 
@@ -56,7 +55,7 @@ public static class ABCModelReader
         {
             vertex.Weights.Add(ReadWeight(reader));
         }
-        vertex.Location = ReadVector3(reader);
+        vertex.Position = ReadVector3(reader);
         vertex.Normal = ReadVector3(reader);
         return vertex;
     }
@@ -237,8 +236,11 @@ public static class ABCModelReader
                             return null;
                         }
 
-                        model.PiecesChunk.Pieces.Add(piece);
+                        model.PiecesChunk.AllPieces.Add(piece);
                     }
+
+                    model.PiecesChunk.Pieces = model.PiecesChunk.AllPieces.Where(p => p.HasMesh).ToList();
+                    model.PiecesChunk.FixFacesForExtraUVCoordinates();
                 }
                 else if (sectionName == "Nodes")
                 {

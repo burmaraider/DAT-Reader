@@ -6,27 +6,10 @@ using UnityEngine;
 
 public class ABCPrefabLookupUtility : DataExtractor
 {
-    private static bool TrySetExistingLookups(ABCReferenceModels abcReferenceModels)
-    {
-        var prefabFilenames = Directory.GetFiles(ABCPrefabPath, "*.prefab", SearchOption.AllDirectories);
-        if (prefabFilenames.Length == 0)
-        {
-            return false;
-        }
+    private static List<float> LODRelativeHeights = new List<float> { 0.6f, 0.3f, 0.1f, 0.01f };
 
-        // Update UnityPathAndFilenameToPrefab on each model
-        foreach (var abcWithSkinModel in abcReferenceModels.ABCWithSkinsModels)
-        {
-            string name = Path.GetFileNameWithoutExtension(abcWithSkinModel.ABCModel.Name + abcWithSkinModel.GetNameSuffix());
-            string relativePathOnlyToABC = Path.GetDirectoryName(abcWithSkinModel.ABCModel.RelativePathToABCFileLowercase);
-            string prefabPathAndFilename = Path.Combine(ABCPrefabPath, relativePathOnlyToABC, name + ".prefab");
-            abcWithSkinModel.UnityPathAndFilenameToPrefab = prefabPathAndFilename;
-        }
-
-        SetPrefabLookupPaths(abcReferenceModels);
-
-        return true;
-    }
+    public static List<string> HumanoidModels = new List<string>();
+    public static List<string> ModelsWithNoMaterials = new List<string>();
 
     private static List<ABCWithSkinModel> GetABCWithSkins(List<ABCModel> abcModels, List<DATModel> datModels)
     {
@@ -145,50 +128,122 @@ public class ABCPrefabLookupUtility : DataExtractor
         return materials;
     }
 
-    private static GameObject CreateGameObjectFromABCReference(ABCModel abcModel, Material[] materials)
+    private static GameObject CreateBones(GameObject parent, Node node, List<Transform> boneList)
     {
-        if (!UnityLookups.ABCMeshLookups.TryGetValue(abcModel.RelativePathToABCFileLowercase, out string unityPathAndFilenameToMesh))
+        var boneObject = new GameObject(node.Name);
+        boneObject.transform.SetParent(parent.transform, true);
+        boneObject.transform.position = node.Matrix.Position;
+        boneObject.transform.rotation = node.Matrix.Rotation;
+
+        boneList.Add(boneObject.transform);
+
+        foreach (var childNode in node.Children)
         {
-            Debug.LogError($"Could not find mesh for ABCFile: {abcModel.RelativePathToABCFileLowercase}");
-            return null;
+            CreateBones(boneObject, childNode, boneList);
         }
 
+        return boneObject;
+    }
+
+    private static GameObject CreateSkinnedMesh(Mesh mesh, GameObject parentGameObject, GameObject rootBone, List<Transform> boneList, string justFilenameWithoutExtension, Material[] materials)
+    {
+        GameObject skinnedMeshGameObject = new GameObject(justFilenameWithoutExtension + "_mesh");
+        skinnedMeshGameObject.transform.SetParent(parentGameObject.transform, false);
+
+        SkinnedMeshRenderer skinnedMeshRenderer = skinnedMeshGameObject.AddComponent<SkinnedMeshRenderer>();
+        skinnedMeshRenderer.sharedMesh = mesh;
+        skinnedMeshRenderer.bones = boneList.ToArray();
+        skinnedMeshRenderer.sharedMaterials = materials;
+        skinnedMeshRenderer.updateWhenOffscreen = true;
+        skinnedMeshRenderer.rootBone = rootBone.transform;
+
+        return skinnedMeshGameObject;
+    }
+
+    private static GameObject CreateGameObjectFromABCReference(ABCModel abcModel, Material[] materials, string nameSuffix)
+    {
         // The root bone GameObject already exists on abcModel.RootNode.GameObject.
         // Parent the prefab root to it so the skeleton hierarchy is self-contained.
-        GameObject rootObject = new GameObject(abcModel.Name);
+        string justNameWithoutExtension = Path.GetFileNameWithoutExtension(abcModel.Name);
+        GameObject parentGameObject = new GameObject(justNameWithoutExtension);
 
-        // Parent the skeleton root to the prefab root.
-        abcModel.RootNode.GameObject.transform.SetParent(rootObject.transform, false);
+        var boneList = new List<Transform>();
+        var skeletonRoot = CreateBones(parentGameObject, abcModel.RootNode, boneList);
 
-        // Prep the mesh for use in the Skinned Mesh Renderer.
-        Mesh mesh = AssetDatabase.LoadAssetAtPath<Mesh>(unityPathAndFilenameToMesh);
-        mesh.RecalculateBounds();
-
-        // Create a "visual" object that will hold the mesh(es).
-        GameObject rendererObject = new GameObject(abcModel.Name + "_Visual");
-        rendererObject.transform.SetParent(rootObject.transform, false);
-        SkinnedMeshRenderer smr = rendererObject.AddComponent<SkinnedMeshRenderer>();
-        List<Transform> flattenedBoneTransforms = abcModel.GetFlattenedBoneTransforms();
-        smr.bones = flattenedBoneTransforms.ToArray();
-        smr.rootBone = rootObject.transform;
-        smr.sharedMesh = mesh;
-        smr.sharedMaterials = materials;
-
-        if (abcModel.RootNode.IsHumanoid())
+        if (abcModel.LODCount > 1)
         {
-            Avatar avatar = AvatarBuilder.BuildGenericAvatar(rootObject, abcModel.RootNode.GameObject.name);
-            avatar.name = abcModel.Name + "_Avatar";
+            var lods = new List<LOD>();
+            for (int lodIndex = 0; lodIndex < abcModel.LODCount; lodIndex++)
+            {
+                if (!UnityLookups.ABCMeshWithLODLookups.TryGetValue((abcModel.RelativePathToABCFileLowercase, lodIndex), out string unityPathAndFilenameToMesh))
+                {
+                    Debug.LogError($"Could not find mesh for ABCFile: {abcModel.RelativePathToABCFileLowercase} at lod {lodIndex}");
+                    return null;
+                }
 
-            string relativePathOnlyToABC = Path.GetDirectoryName(abcModel.RelativePathToABCFileLowercase);
-            string avatarPath = Path.Combine(ABCPrefabPath, relativePathOnlyToABC, avatar.name + ".asset").ConvertFolderSeperators();
-            Directory.CreateDirectory(Path.GetDirectoryName(avatarPath));
-            AssetDatabase.CreateAsset(avatar, avatarPath);
+                // Prep the mesh for use in the Skinned Mesh Renderer.
+                Mesh mesh = AssetDatabase.LoadAssetAtPath<Mesh>(unityPathAndFilenameToMesh);
+                var skinnedMeshGameObject = CreateSkinnedMesh(mesh, parentGameObject, skeletonRoot, boneList, $"{justNameWithoutExtension}_LOD{lodIndex}", materials);
+                var lod = new LOD(LODRelativeHeights[lodIndex], new Renderer[] { skinnedMeshGameObject.GetComponent<SkinnedMeshRenderer>() });
+                lods.Add(lod);
+            }
 
-            Animator animator = rootObject.AddComponent<Animator>();
-            animator.avatar = avatar;
+            var lodGroup = parentGameObject.AddComponent<LODGroup>();
+            lodGroup.SetLODs(lods.ToArray());
+            lodGroup.RecalculateBounds();
+        }
+        else
+        {
+            if (!UnityLookups.ABCMeshLookups.TryGetValue(abcModel.RelativePathToABCFileLowercase, out string unityPathAndFilenameToMesh))
+            {
+                Debug.LogError($"Could not find mesh for ABCFile: {abcModel.RelativePathToABCFileLowercase}");
+                return null;
+            }
+
+            // Prep the mesh for use in the Skinned Mesh Renderer.
+            Mesh mesh = AssetDatabase.LoadAssetAtPath<Mesh>(unityPathAndFilenameToMesh);
+            var skinnedMeshGameObject = CreateSkinnedMesh(mesh, parentGameObject, skeletonRoot, boneList, justNameWithoutExtension, materials);
         }
 
-        return rootObject;
+        CreateAvatar(abcModel.RootNode.IsHumanoid(), parentGameObject, boneList, abcModel, nameSuffix);
+
+        return parentGameObject;
+    }
+
+    private static void CreateAvatar(bool isHumanoid, GameObject parentGameObject, List<Transform> boneList, ABCModel abcModel, string nameSuffix)
+    {
+        Avatar avatar = null;
+        if (isHumanoid)
+        {
+            avatar = ABCHumanAvatarBuilder.Build(parentGameObject, boneList);
+            if (avatar is not null)
+            {
+                HumanoidModels.Add(abcModel.RelativePathToABCFileLowercase);
+            }
+        }
+
+        if (avatar is null)
+        {
+            avatar = AvatarBuilder.BuildGenericAvatar(parentGameObject, boneList[0].name);
+            if (!avatar.isValid)
+            {
+                Debug.LogError("Non-Human avatar is invalid. Check that all required bones are present and the hierarchy is correct.");
+                avatar = null;
+            }
+        }
+
+        if (avatar is not null)
+        {
+            string relativePathOnlyToABC = Path.GetDirectoryName(abcModel.RelativePathToABCFileLowercase);
+            string prefabPathAndFilename = Path.Combine(ABCAvatarPath, relativePathOnlyToABC, abcModel.Name + nameSuffix + ".asset");
+            Directory.CreateDirectory(Path.GetDirectoryName(prefabPathAndFilename));
+            AssetDatabase.CreateAsset(avatar, prefabPathAndFilename);
+            //AssetDatabase.SaveAssets();
+            //var loadedAvatar = AssetDatabase.LoadAssetAtPath<Avatar>(prefabPathAndFilename);
+
+            var animator = parentGameObject.AddComponent<Animator>();
+            animator.avatar = avatar;
+        }
     }
 
     private static void CreateABCPrefabs(List<ABCWithSkinModel> abcWithSkinsModels)
@@ -200,8 +255,8 @@ public class ABCPrefabLookupUtility : DataExtractor
             float progress = (float)i / abcWithSkinsModels.Count;
             EditorUtility.DisplayProgressBar("Creating ABC Prefabs with skins", $"Item {i} of {abcWithSkinsModels.Count}", progress);
 
-            Material[] materials = GetMaterials(abcWithSkinModel.ABCModel.PiecesChunk.GetTotalTextureCount(), abcWithSkinModel.GetSkinList());
-            var gameObject = CreateGameObjectFromABCReference(abcWithSkinModel.ABCModel, materials);
+            Material[] materials = GetMaterials(abcWithSkinModel.ABCModel.PiecesChunk.TotalTextureCount, abcWithSkinModel.GetSkinList());
+            var gameObject = CreateGameObjectFromABCReference(abcWithSkinModel.ABCModel, materials, abcWithSkinModel.GetNameSuffix());
 
             // Save prefab
             string relativePathOnlyToABC = Path.GetDirectoryName(abcWithSkinModel.ABCModel.RelativePathToABCFileLowercase);
@@ -227,8 +282,8 @@ public class ABCPrefabLookupUtility : DataExtractor
             float progress = (float)i / abcWithSameNameMaterialModels.Count;
             EditorUtility.DisplayProgressBar("Creating ABC Prefabs with matching PNG", $"Item {i} of {abcWithSameNameMaterialModels.Count}", progress);
 
-            Material[] materials = GetMaterials(abcWithSameNameMaterialModel.ABCModel.PiecesChunk.GetTotalTextureCount(), abcWithSameNameMaterialModel.Material);
-            var gameObject = CreateGameObjectFromABCReference(abcWithSameNameMaterialModel.ABCModel, materials);
+            Material[] materials = GetMaterials(abcWithSameNameMaterialModel.ABCModel.PiecesChunk.TotalTextureCount, abcWithSameNameMaterialModel.Material);
+            var gameObject = CreateGameObjectFromABCReference(abcWithSameNameMaterialModel.ABCModel, materials, string.Empty);
 
             string relativePathOnlyToABC = Path.GetDirectoryName(abcWithSameNameMaterialModel.ABCModel.RelativePathToABCFileLowercase);
             string prefabPathAndFilename = Path.Combine(ABCPrefabPath, relativePathOnlyToABC, abcWithSameNameMaterialModel.ABCModel.Name + ".prefab");
@@ -249,11 +304,14 @@ public class ABCPrefabLookupUtility : DataExtractor
         foreach (var abcModel in abcWithNoMaterialModels)
         {
             i++;
+
+            ModelsWithNoMaterials.Add(abcModel.RelativePathToABCFileLowercase);
+
             float progress = (float)i / abcWithNoMaterialModels.Count;
             EditorUtility.DisplayProgressBar("Creating ABC Prefabs with no materials", $"Item {i} of {abcWithNoMaterialModels.Count}", progress);
 
-            Material[] materials = GetMaterials(abcModel.PiecesChunk.GetTotalTextureCount(), MissingMaterial);
-            var gameObject = CreateGameObjectFromABCReference(abcModel, materials);
+            Material[] materials = GetMaterials(abcModel.PiecesChunk.TotalTextureCount, MissingMaterial);
+            var gameObject = CreateGameObjectFromABCReference(abcModel, materials, string.Empty);
 
             string relativePathOnlyToABC = Path.GetDirectoryName(abcModel.RelativePathToABCFileLowercase);
             string prefabPathAndFilename = Path.Combine(ABCPrefabPath, relativePathOnlyToABC, abcModel.Name + ".prefab");
@@ -336,19 +394,11 @@ public class ABCPrefabLookupUtility : DataExtractor
         };
     }
 
-    public static void SetLookups(bool alwaysCreate, List<DATModel> datModels, List<ABCModel> abcModels)
+    public static void SetLookups(List<DATModel> datModels, List<ABCModel> abcModels)
     {
         UnityLookups.ABCPrefabLookups.Clear();
 
         var abcReferenceModels = GetABCReferences(datModels, abcModels);
-
-        if (!alwaysCreate)
-        {
-            if (TrySetExistingLookups(abcReferenceModels))
-            {
-                return;
-            }
-        }
 
         CreateABCPrefabs(abcReferenceModels);
         SetPrefabLookupPaths(abcReferenceModels);

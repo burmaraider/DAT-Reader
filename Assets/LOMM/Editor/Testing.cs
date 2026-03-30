@@ -232,13 +232,13 @@ public class Testing : DataExtractor
     private static void ShowModelsWithMultipleMaterials(List<ABCModel> abcModels)
     {
         var abcModelsWithMultipleMaterials = abcModels
-            .Where(abc => abc.PiecesChunk.GetTotalTextureCount() > 1)
+            .Where(abc => abc.PiecesChunk.TotalTextureCount > 1)
             .ToList();
 
         var s = "Testing ABC models with multiple materials\r\n";
         foreach(var abcModel in abcModelsWithMultipleMaterials)
         {
-            s += $"\tTotalTextureCount={abcModel.PiecesChunk.GetTotalTextureCount()} | "
+            s += $"\tTotalTextureCount={abcModel.PiecesChunk.TotalTextureCount} | "
                 + $"PieceCount={abcModel.PiecesChunk.Pieces.Count} | Piece0.Faces={abcModel.PiecesChunk.Pieces[0].LODs[0].Faces.Count} | Piece1.Faces={abcModel.PiecesChunk.Pieces[1].LODs[0].Faces.Count}"
                 + $" | Piece0.Vertices={abcModel.PiecesChunk.Pieces[0].LODs[0].Vertices.Count} | Piece1.Vertices={abcModel.PiecesChunk.Pieces[1].LODs[0].Vertices.Count}"
                 + $": {abcModel.RelativePathToABCFileLowercase}\r\n";
@@ -283,6 +283,21 @@ public class Testing : DataExtractor
         }
     }
 
+    private static void ShowStatsDruidModel()
+    {
+        var files = Directory.GetFiles(ProjectFolder, "*.abc", SearchOption.AllDirectories);
+        var druidFile = files.Where(x => Path.GetFileName(x).ToLower() == "druid.abc").FirstOrDefault();
+
+        var druid = ABCModelReader.ReadABCModel(druidFile, ProjectFolder);
+
+        StringBuilder s = new StringBuilder();
+        s.AppendLine("Druid:");
+        s.AppendLine($"\tPieces: {druid.PiecesChunk.Pieces.Count}");
+        s.AppendLine("\tNodes:");
+        s.AppendLine(druid.RootNode.ToFormattedString(false, 2));
+        Debug.Log(s);
+    }
+
     [MenuItem("Tools/Test All")]
     public static void TestAll()
     {
@@ -316,20 +331,5 @@ public class Testing : DataExtractor
         ShowStatsDruidModel();
 
         //ShowStartPoints(datModels);
-    }
-
-    private static void ShowStatsDruidModel()
-    {
-        var files = Directory.GetFiles(ProjectFolder, "*.abc", SearchOption.AllDirectories);
-        var druidFile = files.Where(x => Path.GetFileName(x).ToLower() == "druid.abc").FirstOrDefault();
-
-        var druid = ABCModelReader.ReadABCModel(druidFile, ProjectFolder);
-
-        StringBuilder s = new StringBuilder();
-        s.AppendLine("Druid:");
-        s.AppendLine($"\tPieces: {druid.PiecesChunk.Pieces.Count}");
-        s.AppendLine("\tNodes:");
-        s.AppendLine(druid.RootNode.ToFormattedString(false, 2));
-        Debug.Log(s);
     }
 }

@@ -1,12 +1,35 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class VertexModel
 {
     public ushort SublodVertexIndex { get; set; }
     public List<WeightModel> Weights { get; set; }
-    public Vector3 Location { get; set; }
+    public Vector3 Position { get; set; }
     public Vector3 Normal { get; set; }
+
+    public VertexModel()
+    {
+        this.Weights = new List<WeightModel>();
+    }
+
+    public VertexModel(VertexModel source)
+        : this()
+    {
+        SublodVertexIndex = source.SublodVertexIndex;
+        Position = source.Position;
+        Normal = source.Normal;
+        foreach (var weight in source.Weights)
+        {
+            Weights.Add(new WeightModel
+            {
+                NodeIndex = weight.NodeIndex,
+                Location = weight.Location,
+                Bias = weight.Bias
+            });
+        }
+    }
 
     public BoneWeight GetBoneWeight()
     {

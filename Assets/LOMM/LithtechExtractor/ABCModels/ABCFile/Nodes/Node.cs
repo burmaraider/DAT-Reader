@@ -11,8 +11,6 @@ public sealed class Node
 
     public List<Node> Children { get; set; } = new List<Node>();
 
-    public GameObject GameObject { get; set; }
-
     public bool IsHumanoid()
     {
         if (Name.Contains("Bip01", StringComparison.OrdinalIgnoreCase))
